@@ -3717,6 +3717,20 @@ Icon=Color3.fromHex"#c9a8c9",
 Toggle=Color3.fromHex"#a8d4a8",
 Checkbox=Color3.fromHex"#b8d4e0",
 },
+Void={
+Name="Void",
+
+Accent=Color3.fromHex"#0d0015",
+Dialog=Color3.fromHex"#0a000f",
+Outline=Color3.fromHex"#6b21a8",
+Text=Color3.fromHex"#e9d5ff",
+Placeholder=Color3.fromHex"#7c3aed",
+Background=Color3.fromHex"#030005",
+Button=Color3.fromHex"#581c87",
+Icon=Color3.fromHex"#a855f7",
+Toggle=Color3.fromHex"#c026d3",
+Checkbox=Color3.fromHex"#9333ea",
+},
 }
 end end function a.t()
 local aa={}

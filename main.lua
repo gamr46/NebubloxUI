@@ -22,8 +22,8 @@ local Window = UILib:CreateWindow({
     Folder = "NebubloxHub",                -- Save folder name
     Icon = "rbxassetid://0",              -- Window icon (replace with your own)
     IconSize = 44,                        -- Icon size in pixels
-    Theme = "Dark",                       -- Theme: "Dark" or "Light"
-    Transparent = false,                  -- Enable glass effect
+    Theme = "Void",                       -- Theme: Void (cosmic dark purple)
+    Transparent = true,                   -- Enable glass effect for ethereal look
     SideBarWidth = 200,                   -- Sidebar width
     HasOutline = true,                    -- Show window outline
     
