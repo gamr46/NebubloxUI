@@ -306,20 +306,20 @@ TargetSection:Button({
 })
 
 -- ═══════════════════════════════════════════════════════════
--- FRUITS TAB (Gacha/Rolling)
+-- GACHA TAB (Rolling)
 -- ═══════════════════════════════════════════════════════════
-local RollSection = FruitsTab:Section({ Title = "Fruit Rolling", Icon = "dice-5", Opened = true })
+local RollSection = FruitsTab:Section({ Title = "Gacha Rolling", Icon = "dice-5", Opened = true })
 local SceneSection = FruitsTab:Section({ Title = "Scenes/Worlds", Icon = "map", Opened = true })
 
--- Scene data with fruits
+-- Scene data with gachas
 local SCENES = {
-    { Name = "Scene 1 - Pirate Village", Fruits = {"Shock Fruit", "Flame Fruit"} },
-    { Name = "Scene 2 - Ninja Village", Fruits = {} },
-    { Name = "Scene 3 - Shirayuki Village", Fruits = {} },
-    { Name = "Scene 4 - Cursed Arts Hamlet", Fruits = {} },
-    { Name = "Scene 5 - Arcane City Lofts", Fruits = {} },
-    { Name = "Scene 6 - Lookout", Fruits = {} },
-    { Name = "Scene 7 - Duck Research Center", Fruits = {} },
+    { Name = "Scene 1 - Pirate Village", Gachas = {"Shock Fruit", "Flame Fruit"} },
+    { Name = "Scene 2 - Ninja Village", Gachas = {"Sharingan", "Tessen"} },
+    { Name = "Scene 3 - Shirayuki Village", Gachas = {"Nichirian Earring", "SwordsSmith Mask"} },
+    { Name = "Scene 4 - Cursed Arts Hamlet", Gachas = {"Impression Ring", "Prison Realm"} },
+    { Name = "Scene 5 - Arcane City Lofts", Gachas = {"One Punch", "Monster Cell"} },
+    { Name = "Scene 6 - Lookout", Gachas = {"Scouter", "Dragon Radar"} },
+    { Name = "Scene 7 - Duck Research Center", Gachas = {"Speed Mark", "Life Mark"} },
 }
 
 local autoRollEnabled = false
@@ -327,12 +327,12 @@ local autoRollEnabled = false
 -- Roll once button (RollOne takes no arguments)
 RollSection:Button({
     Title = "Roll Once",
-    Desc = "Fire RollOne (random fruit)",
+    Desc = "Fire RollOne (random gacha)",
     Icon = "dice-5",
     Callback = function()
         if RollOne then
             RollOne:FireServer()
-            NebubloxUI:Notify({ Title = "Rolling!", Content = "Rolled for a fruit!", Icon = "dice-5", Duration = 2 })
+            NebubloxUI:Notify({ Title = "Rolling!", Content = "Rolled for a gacha!", Icon = "dice-5", Duration = 2 })
         else
             NebubloxUI:Notify({ Title = "Error", Content = "RollOne remote not found", Icon = "x", Duration = 2 })
         end
@@ -390,7 +390,6 @@ SceneSection:Dropdown({
     Values = (function()
         local vals = {}
         for _, scene in ipairs(SCENES) do
-            local fruitText = #scene.Fruits > 0 and table.concat(scene.Fruits, ", ") or "Unknown"
             table.insert(vals, { Title = scene.Name, Icon = "map-pin" })
         end
         return vals
@@ -398,8 +397,8 @@ SceneSection:Dropdown({
     Callback = function(val)
         for _, scene in ipairs(SCENES) do
             if scene.Name == (val.Title or val) then
-                local fruitText = #scene.Fruits > 0 and table.concat(scene.Fruits, ", ") or "Unknown fruits"
-                NebubloxUI:Notify({ Title = scene.Name, Content = "Fruits: " .. fruitText, Icon = "cherry", Duration = 4 })
+                local gachaText = #scene.Gachas > 0 and table.concat(scene.Gachas, ", ") or "Unknown"
+                NebubloxUI:Notify({ Title = scene.Name, Content = "Gachas: " .. gachaText, Icon = "gift", Duration = 4 })
                 break
             end
         end
