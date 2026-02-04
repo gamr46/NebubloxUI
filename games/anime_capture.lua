@@ -18,16 +18,21 @@ local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 
 local RollOne = Remotes:FindFirstChild("RollOne") or ReplicatedStorage:FindFirstChild("RollOne")
-local RebirthEvent = Remotes:FindFirstChild("RebirthEvent") or ReplicatedStorage:FindFirstChild("RebirthEvent")
-local EquipBestEvent = Remotes:FindFirstChild("EquipBestEvent") or ReplicatedStorage:FindFirstChild("EquipBestEvent") -- UPDATED
-local CraftItemEvent = Remotes:FindFirstChild("CraftItemEvent") or ReplicatedStorage:FindFirstChild("CraftItemEvent") -- UPDATED
-local GetAllEvent = Remotes:FindFirstChild("GetAllEvent") or ReplicatedStorage:FindFirstChild("GetAllEvent") -- Achievement Claim
+local RebirthEvent = Remotes:FindFirstChild("Rebirth") and Remotes.Rebirth:FindFirstChild("RebirthEvent") or ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events.Rebirth:FindFirstChild("RebirthEvent")
+local EquipBestEvent = Remotes:FindFirstChild("EquipBestEvent") or ReplicatedStorage:FindFirstChild("EquipBestEvent")
+local CraftItemEvent = Remotes:FindFirstChild("CraftItemEvent") or ReplicatedStorage:FindFirstChild("CraftItemEvent")
+local GetAllEvent = Remotes:FindFirstChild("GetAllEvent") or ReplicatedStorage:FindFirstChild("GetAllEvent")
 local UseCatchRate = Remotes:FindFirstChild("CatchRate") and Remotes.CatchRate:FindFirstChild("UseCatchRate") or ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events.CatchRate:FindFirstChild("UseCatchRate")
+local PortalEvent = Remotes:FindFirstChild("Map") and Remotes.Map:FindFirstChild("PortalEvent") or ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events.Map:FindFirstChild("PortalEvent")
+local ClickUpgradeEvent = Remotes:FindFirstChild("Click") and Remotes.Click:FindFirstChild("ClickEvent") or ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events.Click:FindFirstChild("ClickEvent")
+local ClickPlusEvent = Remotes:FindFirstChild("Click") and Remotes.Click:FindFirstChild("ClickPlusEvent") or ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events.Click:FindFirstChild("ClickPlusEvent")
 
 -- Variables
 local autoFarmEnabled = false
 local autoCaptureEnabled = false
-local autoClickEnabled = false
+local autoClickEnabled = false -- This is for ATTACK clicking
+local autoUpgradeClickEnabled = false -- This is for RANK/CURRENCY clicking
+local autoSuperClickEnabled = false -- This is for CLICK PLUS clicking
 local autoRebirthEnabled = false
 local autoEquipEnabled = false
 local autoCraftEnabled = false
@@ -36,6 +41,55 @@ local selectedTarget = nil
 local selectedBallId = 1 -- Default Ball ID
 
 -- ... (rest of code)
+
+-- ═══════════════════════════════════════════════════════════
+-- CAPTURE TAB
+-- ══════════════════════════════════════════════════════════m
+-- FARM TAB
+-- ═══════════════════════════════════════════════════════════
+local AutoSection = FarmTab:Section({ Title = "Auto Farm", Icon = "repeat", Opened = true })
+local ClickSection = FarmTab:Section({ Title = "Clicking / Upgrades", Icon = "mouse-pointer", Opened = true })
+
+AutoSection:Toggle({
+    Title = "Auto Farm (Attack)",
+    Desc = "Automatically kill enemies",
+    Value = false,
+    Callback = function(state)
+        autoFarmEnabled = state
+        NebubloxUI:Notify({ Title = state and "Auto Farm ON" or "Auto Farm OFF", Content = state and "Farming started" or "Farming stopped", Icon = state and "sword" or "x", Duration = 2 })
+    end
+})
+
+ClickSection:Toggle({
+    Title = "Auto Attack Click",
+    Desc = "Spam clicks on enemies",
+    Value = false,
+    Callback = function(state)
+        autoClickEnabled = state
+    end
+})
+
+ClickSection:Toggle({
+    Title = "Auto Upgrade Click",
+    Desc = "Spam ClickEvent (Rank/Currency)",
+    Value = false,
+    Callback = function(state)
+        autoUpgradeClickEnabled = state
+        NebubloxUI:Notify({ Title = "Auto Upgrade", Content = state and "Spamming ClickEvent..." or "Stopped", Icon = "chevrons-up", Duration = 2 })
+    end
+})
+
+ClickSection:Toggle({
+    Title = "Auto Super Click",
+    Desc = "Spam ClickPlusEvent (Super Click)",
+    Value = false,
+    Callback = function(state)
+        autoSuperClickEnabled = state
+        NebubloxUI:Notify({ Title = "Auto Super Click", Content = state and "Spamming ClickPlus..." or "Stopped", Icon = "star", Duration = 2 })
+    end
+})
+
+-- ...
 
 -- ═══════════════════════════════════════════════════════════
 -- CAPTURE TAB
@@ -558,40 +612,45 @@ SceneSection:Dropdown({
 })
 
 -- Teleport Button
--- Teleport Button
 SceneSection:Button({
     Title = "Teleport to Scene",
-    Desc = "Teleport to selected location",
+    Desc = "Teleport to selected location via Portal",
     Icon = "zap",
     Callback = function()
-        if selectedScene and selectedScene.Island then
-            -- Find the island in Workspace
-            local island = Workspace:FindFirstChild(selectedScene.Island)
-            
-            if island then
-                -- Try to find a good teleport spot (Spawn, Part, or just above center)
-                local targetCFrame = island:IsA("Model") and (island.PrimaryPart and island.PrimaryPart.CFrame or island:GetModelCFrame()) or island.CFrame
-                
-                if island:IsA("Folder") then
-                     -- If it's a folder, look for a "Spawn" or "Base" part
-                    local spawnPart = island:FindFirstChild("Spawn") or island:FindFirstChild("Base") or island:FindFirstChild("Floor")
-                    if spawnPart then
-                        targetCFrame = spawnPart.CFrame
-                    else
-                         NebubloxUI:Notify({ Title = "Error", Content = "Could not find part in " .. selectedScene.Island, Icon = "x", Duration = 2 })
-                         return
-                    end
-                end
-
-                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    player.Character.HumanoidRootPart.CFrame = targetCFrame + Vector3.new(0, 10, 0)
-                    NebubloxUI:Notify({ Title = "Teleported!", Content = "Arrived at " .. selectedScene.Name, Icon = "check", Duration = 2 })
-                end
+        if selectedScene then
+            -- 1. Try Native Portal First (Best method)
+            if PortalEvent and selectedScene.MapId then
+                PortalEvent:FireServer(selectedScene.MapId)
+                NebubloxUI:Notify({ Title = "Warping...", Content = "Traveling to " .. selectedScene.Name, Icon = "zap", Duration = 2 })
             else
-                NebubloxUI:Notify({ Title = "Error", Content = selectedScene.Island .. " not found in Workspace", Icon = "x", Duration = 2 })
+                -- 2. Fallback to CFrame / Island Finder
+                 local island = Workspace:FindFirstChild(selectedScene.Island)
+                
+                if island then
+                    -- Try to find a good teleport spot (Spawn, Part, or just above center)
+                    local targetCFrame = island:IsA("Model") and (island.PrimaryPart and island.PrimaryPart.CFrame or island:GetModelCFrame()) or island.CFrame
+                    
+                    if island:IsA("Folder") then
+                         -- If it's a folder, look for a "Spawn" or "Base" part
+                        local spawnPart = island:FindFirstChild("Spawn") or island:FindFirstChild("Base") or island:FindFirstChild("Floor")
+                        if spawnPart then
+                            targetCFrame = spawnPart.CFrame
+                        else
+                             NebubloxUI:Notify({ Title = "Error", Content = "Could not find part in " .. selectedScene.Island, Icon = "x", Duration = 2 })
+                             return
+                        end
+                    end
+    
+                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        player.Character.HumanoidRootPart.CFrame = targetCFrame + Vector3.new(0, 10, 0)
+                        NebubloxUI:Notify({ Title = "Teleported!", Content = "Arrived at " .. selectedScene.Name, Icon = "check", Duration = 2 })
+                    end
+                else
+                    NebubloxUI:Notify({ Title = "Error", Content = selectedScene.Island .. " not found in Workspace", Icon = "x", Duration = 2 })
+                end
             end
         else
-            NebubloxUI:Notify({ Title = "Error", Content = "No island set for this scene!", Icon = "x", Duration = 2 })
+            NebubloxUI:Notify({ Title = "Error", Content = "No scene selected!", Icon = "x", Duration = 2 })
         end
     end
 })
