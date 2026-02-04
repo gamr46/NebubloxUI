@@ -17,9 +17,18 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 
+-- Game Remote Events (Anime Capture specific)
+local Remotes = ReplicatedStorage:WaitForChild("Remotes", 5) or ReplicatedStorage
+local SetEnemyEvent = Remotes:FindFirstChild("SetEnemyEvent") or ReplicatedStorage:FindFirstChild("SetEnemyEvent")
+local ClickEvent = Remotes:FindFirstChild("ClickEvent") or ReplicatedStorage:FindFirstChild("ClickEvent")
+local CatchFollowFinish = Remotes:FindFirstChild("CatchFollowFinish") or ReplicatedStorage:FindFirstChild("CatchFollowFinish")
+local PlayerAttack = Remotes:FindFirstChild("PlayerAttack") or ReplicatedStorage:FindFirstChild("PlayerAttack")
+local RollOne = Remotes:FindFirstChild("RollOne") or ReplicatedStorage:FindFirstChild("RollOne")
+
 -- Variables
 local autoFarmEnabled = false
 local autoCaptureEnabled = false
+local autoClickEnabled = false
 local selectedTarget = nil
 
 -- ═══════════════════════════════════════════════════════════
@@ -99,6 +108,7 @@ local Window = NebubloxUI:CreateWindow({
 -- TABS
 -- ═══════════════════════════════════════════════════════════
 local CaptureTab = Window:Tab({ Title = "Capture", Icon = "target" })
+local FruitsTab = Window:Tab({ Title = "Fruits", Icon = "cherry" })
 local FarmTab = Window:Tab({ Title = "Farm", Icon = "coins" })
 local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
 local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
@@ -152,10 +162,86 @@ TargetSection:Button({
     end
 })
 
+-- Set Enemy (fires SetEnemyEvent)
+CaptureSection:Button({
+    Title = "Set Enemy Target",
+    Desc = "Fire SetEnemyEvent on selected target",
+    Icon = "crosshair",
+    Callback = function()
+        if selectedTarget and selectedTarget.Model then
+            if SetEnemyEvent then
+                SetEnemyEvent:FireServer(selectedTarget.Model)
+                NebubloxUI:Notify({ Title = "Enemy Set!", Content = "Targeting " .. selectedTarget.Name, Icon = "target", Duration = 2 })
+            else
+                NebubloxUI:Notify({ Title = "Error", Content = "SetEnemyEvent not found", Icon = "x", Duration = 2 })
+            end
+        else
+            NebubloxUI:Notify({ Title = "No Target", Content = "Select a target first!", Icon = "alert-circle", Duration = 2 })
+        end
+    end
+})
+
+-- Click Attack (fires ClickEvent)
+CaptureSection:Button({
+    Title = "Click Attack",
+    Desc = "Fire ClickEvent on selected target",
+    Icon = "mouse-pointer",
+    Callback = function()
+        if selectedTarget and selectedTarget.Model then
+            if ClickEvent then
+                ClickEvent:FireServer(selectedTarget.Model)
+                NebubloxUI:Notify({ Title = "Clicked!", Content = "Attacked " .. selectedTarget.Name, Icon = "zap", Duration = 2 })
+            else
+                NebubloxUI:Notify({ Title = "Error", Content = "ClickEvent not found", Icon = "x", Duration = 2 })
+            end
+        else
+            NebubloxUI:Notify({ Title = "No Target", Content = "Select a target first!", Icon = "alert-circle", Duration = 2 })
+        end
+    end
+})
+
+-- Capture/Catch (fires CatchFollowFinish)
+CaptureSection:Button({
+    Title = "Capture Now",
+    Desc = "Fire CatchFollowFinish to capture",
+    Icon = "box",
+    Callback = function()
+        if selectedTarget and selectedTarget.Model then
+            if CatchFollowFinish then
+                CatchFollowFinish:FireServer(selectedTarget.Model)
+                NebubloxUI:Notify({ Title = "Captured!", Content = "Caught " .. selectedTarget.Name, Icon = "check", Duration = 2 })
+            else
+                NebubloxUI:Notify({ Title = "Error", Content = "CatchFollowFinish not found", Icon = "x", Duration = 2 })
+            end
+        else
+            NebubloxUI:Notify({ Title = "No Target", Content = "Select a target first!", Icon = "alert-circle", Duration = 2 })
+        end
+    end
+})
+
+-- Player Attack (fires PlayerAttack)
+CaptureSection:Button({
+    Title = "Player Attack",
+    Desc = "Fire PlayerAttack remote",
+    Icon = "swords",
+    Callback = function()
+        if selectedTarget and selectedTarget.Model then
+            if PlayerAttack then
+                PlayerAttack:FireServer(selectedTarget.Model)
+                NebubloxUI:Notify({ Title = "Attacked!", Content = "Player attacked " .. selectedTarget.Name, Icon = "swords", Duration = 2 })
+            else
+                NebubloxUI:Notify({ Title = "Error", Content = "PlayerAttack not found", Icon = "x", Duration = 2 })
+            end
+        else
+            NebubloxUI:Notify({ Title = "No Target", Content = "Select a target first!", Icon = "alert-circle", Duration = 2 })
+        end
+    end
+})
+
 -- Auto capture toggle
 CaptureSection:Toggle({
     Title = "Auto Capture",
-    Desc = "Automatically capture nearby entities",
+    Desc = "Auto: SetEnemy → Click → Catch",
     Value = false,
     Callback = function(state)
         autoCaptureEnabled = state
@@ -163,6 +249,22 @@ CaptureSection:Toggle({
             Title = state and "Auto Capture ON" or "Auto Capture OFF",
             Content = state and "Will auto-capture entities" or "Disabled",
             Icon = state and "check" or "x",
+            Duration = 2
+        })
+    end
+})
+
+-- Auto Click toggle
+CaptureSection:Toggle({
+    Title = "Auto Click",
+    Desc = "Continuously fire ClickEvent",
+    Value = false,
+    Callback = function(state)
+        autoClickEnabled = state
+        NebubloxUI:Notify({
+            Title = state and "Auto Click ON" or "Auto Click OFF",
+            Content = state and "Clicking enabled" or "Disabled",
+            Icon = state and "mouse-pointer" or "x",
             Duration = 2
         })
     end
@@ -200,6 +302,108 @@ TargetSection:Button({
             entityDropdown:SetValues(values)
         end
         NebubloxUI:Notify({ Title = "Refreshed!", Content = #entities .. " entities found", Icon = "check", Duration = 2 })
+    end
+})
+
+-- ═══════════════════════════════════════════════════════════
+-- FRUITS TAB (Gacha/Rolling)
+-- ═══════════════════════════════════════════════════════════
+local RollSection = FruitsTab:Section({ Title = "Fruit Rolling", Icon = "dice-5", Opened = true })
+
+-- Known fruits list (add more as you discover them)
+local FRUITS = {
+    "Flame Fruit",
+    "Ice Fruit",
+    "Lightning Fruit",
+    "Dark Fruit",
+    "Light Fruit",
+    "Magma Fruit",
+    "Quake Fruit",
+    "String Fruit",
+    "Phoenix Fruit",
+    "Dragon Fruit",
+}
+
+local selectedFruit = "Flame Fruit"
+local autoRollEnabled = false
+local autoRollTarget = "Flame Fruit"
+
+-- Fruit dropdown
+RollSection:Dropdown({
+    Title = "Select Fruit to Roll",
+    Values = (function()
+        local vals = {}
+        for _, fruit in ipairs(FRUITS) do
+            table.insert(vals, { Title = fruit, Icon = "cherry" })
+        end
+        return vals
+    end)(),
+    Value = "Flame Fruit",
+    SearchBarEnabled = true,
+    Callback = function(val)
+        selectedFruit = val.Title or val
+        autoRollTarget = selectedFruit
+        NebubloxUI:Notify({ Title = "Selected!", Content = selectedFruit, Icon = "cherry", Duration = 2 })
+    end
+})
+
+-- Roll once button
+RollSection:Button({
+    Title = "Roll Once",
+    Desc = "Fire RollOne for selected fruit",
+    Icon = "dice-5",
+    Callback = function()
+        if RollOne then
+            RollOne:FireServer(selectedFruit)
+            NebubloxUI:Notify({ Title = "Rolling!", Content = "Rolled for " .. selectedFruit, Icon = "dice-5", Duration = 2 })
+        else
+            NebubloxUI:Notify({ Title = "Error", Content = "RollOne remote not found", Icon = "x", Duration = 2 })
+        end
+    end
+})
+
+-- Roll 10x button
+RollSection:Button({
+    Title = "Roll 10x",
+    Desc = "Roll 10 times quickly",
+    Icon = "layers",
+    Callback = function()
+        if RollOne then
+            for i = 1, 10 do
+                RollOne:FireServer(selectedFruit)
+                wait(0.1)
+            end
+            NebubloxUI:Notify({ Title = "Done!", Content = "Rolled 10x for " .. selectedFruit, Icon = "check", Duration = 2 })
+        else
+            NebubloxUI:Notify({ Title = "Error", Content = "RollOne remote not found", Icon = "x", Duration = 2 })
+        end
+    end
+})
+
+-- Auto roll toggle
+RollSection:Toggle({
+    Title = "Auto Roll",
+    Desc = "Continuously roll for target fruit",
+    Value = false,
+    Callback = function(state)
+        autoRollEnabled = state
+        NebubloxUI:Notify({
+            Title = state and "Auto Roll ON" or "Auto Roll OFF",
+            Content = state and ("Rolling for " .. autoRollTarget) or "Stopped",
+            Icon = state and "repeat" or "x",
+            Duration = 2
+        })
+    end
+})
+
+-- Auto roll speed slider
+local autoRollDelay = 0.5
+RollSection:Slider({
+    Title = "Roll Speed (seconds)",
+    Value = { Min = 0.1, Max = 2, Default = 0.5 },
+    Step = 0.1,
+    Callback = function(val)
+        autoRollDelay = val
     end
 })
 
@@ -300,12 +504,32 @@ ConfigSection:Button({
 -- ═══════════════════════════════════════════════════════════
 spawn(function()
     while wait(0.5) do
-        -- Auto capture loop
+        -- Auto capture loop (full sequence)
         if autoCaptureEnabled then
             local entity = getClosestEntity()
-            if entity then
-                -- Add your capture logic here
-                -- Example: fire capture remote
+            if entity and entity.Model then
+                -- Teleport close
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    player.Character.HumanoidRootPart.CFrame = entity.Root.CFrame + Vector3.new(0, 3, 0)
+                end
+                
+                -- Fire capture sequence
+                if SetEnemyEvent then SetEnemyEvent:FireServer(entity.Model) end
+                wait(0.1)
+                if ClickEvent then ClickEvent:FireServer(entity.Model) end
+                wait(0.1)
+                if PlayerAttack then PlayerAttack:FireServer(entity.Model) end
+                wait(0.1)
+                if CatchFollowFinish then CatchFollowFinish:FireServer(entity.Model) end
+            end
+        end
+        
+        -- Auto click loop
+        if autoClickEnabled then
+            local entity = getClosestEntity()
+            if entity and entity.Model then
+                if ClickEvent then ClickEvent:FireServer(entity.Model) end
+                if PlayerAttack then PlayerAttack:FireServer(entity.Model) end
             end
         end
         
@@ -317,6 +541,16 @@ spawn(function()
                 player.Character.HumanoidRootPart.CFrame = entity.Root.CFrame + Vector3.new(0, 3, 0)
             end
         end
+    end
+end)
+
+-- Auto Roll Loop (separate for custom speed)
+spawn(function()
+    while true do
+        if autoRollEnabled and RollOne then
+            RollOne:FireServer(autoRollTarget)
+        end
+        wait(autoRollDelay or 0.5)
     end
 end)
 
