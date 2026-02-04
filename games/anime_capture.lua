@@ -36,33 +36,28 @@ local selectedTarget = nil
 -- ═══════════════════════════════════════════════════════════
 
 -- Find all capturable entities (NPCs/Anime characters)
+-- Find all capturable entities (NPCs/Anime characters)
 local function getCapturableEntities()
     local entities = {}
     
-    -- Check common locations for NPCs
-    local searchFolders = {
-        Workspace:FindFirstChild("NPCs"),
-        Workspace:FindFirstChild("Enemies"),
-        Workspace:FindFirstChild("Mobs"),
-        Workspace:FindFirstChild("Characters"),
-        Workspace:FindFirstChild("Anime"),
-        Workspace
-    }
-    
-    for _, folder in ipairs(searchFolders) do
-        if folder then
-            for _, obj in ipairs(folder:GetDescendants()) do
-                -- Look for humanoids that aren't players
-                if obj:IsA("Humanoid") and obj.Health > 0 then
-                    local root = obj.Parent:FindFirstChild("HumanoidRootPart")
-                    if root and not Players:GetPlayerFromCharacter(obj.Parent) then
-                        table.insert(entities, {
-                            Name = obj.Parent.Name,
-                            Model = obj.Parent,
-                            Humanoid = obj,
-                            Root = root
-                        })
-                    end
+    -- Scan entire workspace for Humanoids
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Humanoid") and obj.Health > 0 then
+            local model = obj.Parent
+            local root = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("Torso") or model:FindFirstChild("HumanoidRootPart")
+            
+            -- Check if it's a player
+            local isPlayer = Players:GetPlayerFromCharacter(model)
+            
+            if root and not isPlayer then
+                -- Exclude our own character
+                if model ~= player.Character then
+                    table.insert(entities, {
+                        Name = model.Name,
+                        Model = model,
+                        Humanoid = obj,
+                        Root = root
+                    })
                 end
             end
         end
