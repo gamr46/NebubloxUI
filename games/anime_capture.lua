@@ -309,53 +309,30 @@ TargetSection:Button({
 -- FRUITS TAB (Gacha/Rolling)
 -- ═══════════════════════════════════════════════════════════
 local RollSection = FruitsTab:Section({ Title = "Fruit Rolling", Icon = "dice-5", Opened = true })
+local SceneSection = FruitsTab:Section({ Title = "Scenes/Worlds", Icon = "map", Opened = true })
 
--- Known fruits list (add more as you discover them)
-local FRUITS = {
-    "Flame Fruit",
-    "Ice Fruit",
-    "Lightning Fruit",
-    "Dark Fruit",
-    "Light Fruit",
-    "Magma Fruit",
-    "Quake Fruit",
-    "String Fruit",
-    "Phoenix Fruit",
-    "Dragon Fruit",
+-- Scene data with fruits
+local SCENES = {
+    { Name = "Scene 1 - Pirate Village", Fruits = {"Shock Fruit", "Flame Fruit"} },
+    { Name = "Scene 2 - Ninja Village", Fruits = {} },
+    { Name = "Scene 3 - Shirayuki Village", Fruits = {} },
+    { Name = "Scene 4 - Cursed Arts Hamlet", Fruits = {} },
+    { Name = "Scene 5 - Arcane City Lofts", Fruits = {} },
+    { Name = "Scene 6 - Lookout", Fruits = {} },
+    { Name = "Scene 7 - Duck Research Center", Fruits = {} },
 }
 
-local selectedFruit = "Flame Fruit"
 local autoRollEnabled = false
-local autoRollTarget = "Flame Fruit"
 
--- Fruit dropdown
-RollSection:Dropdown({
-    Title = "Select Fruit to Roll",
-    Values = (function()
-        local vals = {}
-        for _, fruit in ipairs(FRUITS) do
-            table.insert(vals, { Title = fruit, Icon = "cherry" })
-        end
-        return vals
-    end)(),
-    Value = "Flame Fruit",
-    SearchBarEnabled = true,
-    Callback = function(val)
-        selectedFruit = val.Title or val
-        autoRollTarget = selectedFruit
-        NebubloxUI:Notify({ Title = "Selected!", Content = selectedFruit, Icon = "cherry", Duration = 2 })
-    end
-})
-
--- Roll once button
+-- Roll once button (RollOne takes no arguments)
 RollSection:Button({
     Title = "Roll Once",
-    Desc = "Fire RollOne for selected fruit",
+    Desc = "Fire RollOne (random fruit)",
     Icon = "dice-5",
     Callback = function()
         if RollOne then
-            RollOne:FireServer(selectedFruit)
-            NebubloxUI:Notify({ Title = "Rolling!", Content = "Rolled for " .. selectedFruit, Icon = "dice-5", Duration = 2 })
+            RollOne:FireServer()
+            NebubloxUI:Notify({ Title = "Rolling!", Content = "Rolled for a fruit!", Icon = "dice-5", Duration = 2 })
         else
             NebubloxUI:Notify({ Title = "Error", Content = "RollOne remote not found", Icon = "x", Duration = 2 })
         end
@@ -370,10 +347,10 @@ RollSection:Button({
     Callback = function()
         if RollOne then
             for i = 1, 10 do
-                RollOne:FireServer(selectedFruit)
+                RollOne:FireServer()
                 wait(0.1)
             end
-            NebubloxUI:Notify({ Title = "Done!", Content = "Rolled 10x for " .. selectedFruit, Icon = "check", Duration = 2 })
+            NebubloxUI:Notify({ Title = "Done!", Content = "Rolled 10 times!", Icon = "check", Duration = 2 })
         else
             NebubloxUI:Notify({ Title = "Error", Content = "RollOne remote not found", Icon = "x", Duration = 2 })
         end
@@ -383,13 +360,13 @@ RollSection:Button({
 -- Auto roll toggle
 RollSection:Toggle({
     Title = "Auto Roll",
-    Desc = "Continuously roll for target fruit",
+    Desc = "Continuously roll for fruits",
     Value = false,
     Callback = function(state)
         autoRollEnabled = state
         NebubloxUI:Notify({
             Title = state and "Auto Roll ON" or "Auto Roll OFF",
-            Content = state and ("Rolling for " .. autoRollTarget) or "Stopped",
+            Content = state and "Rolling continuously..." or "Stopped",
             Icon = state and "repeat" or "x",
             Duration = 2
         })
@@ -398,6 +375,36 @@ RollSection:Toggle({
 
 -- Auto roll speed slider
 local autoRollDelay = 0.5
+RollSection:Slider({
+    Title = "Roll Speed (seconds)",
+    Value = { Min = 0.1, Max = 2, Default = 0.5 },
+    Step = 0.1,
+    Callback = function(val)
+        autoRollDelay = val
+    end
+})
+
+-- Scene dropdown for info
+SceneSection:Dropdown({
+    Title = "Scene Info",
+    Values = (function()
+        local vals = {}
+        for _, scene in ipairs(SCENES) do
+            local fruitText = #scene.Fruits > 0 and table.concat(scene.Fruits, ", ") or "Unknown"
+            table.insert(vals, { Title = scene.Name, Icon = "map-pin" })
+        end
+        return vals
+    end)(),
+    Callback = function(val)
+        for _, scene in ipairs(SCENES) do
+            if scene.Name == (val.Title or val) then
+                local fruitText = #scene.Fruits > 0 and table.concat(scene.Fruits, ", ") or "Unknown fruits"
+                NebubloxUI:Notify({ Title = scene.Name, Content = "Fruits: " .. fruitText, Icon = "cherry", Duration = 4 })
+                break
+            end
+        end
+    end
+})
 RollSection:Slider({
     Title = "Roll Speed (seconds)",
     Value = { Min = 0.1, Max = 2, Default = 0.5 },
@@ -548,7 +555,7 @@ end)
 spawn(function()
     while true do
         if autoRollEnabled and RollOne then
-            RollOne:FireServer(autoRollTarget)
+            RollOne:FireServer()
         end
         wait(autoRollDelay or 0.5)
     end
