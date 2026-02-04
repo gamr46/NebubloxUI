@@ -24,11 +24,17 @@ local ClickEvent = Remotes:FindFirstChild("ClickEvent") or ReplicatedStorage:Fin
 local CatchFollowFinish = Remotes:FindFirstChild("CatchFollowFinish") or ReplicatedStorage:FindFirstChild("CatchFollowFinish")
 local PlayerAttack = Remotes:FindFirstChild("PlayerAttack") or ReplicatedStorage:FindFirstChild("PlayerAttack")
 local RollOne = Remotes:FindFirstChild("RollOne") or ReplicatedStorage:FindFirstChild("RollOne")
+local RebirthEvent = Remotes:FindFirstChild("RebirthEvent") or ReplicatedStorage:FindFirstChild("RebirthEvent") -- [[ UPDATE REMOTE NAME IF NEEDED ]]
+local EquipBest = Remotes:FindFirstChild("EquipBest") or ReplicatedStorage:FindFirstChild("EquipBest") -- [[ UPDATE REMOTE NAME IF NEEDED ]]
+local CraftAll = Remotes:FindFirstChild("CraftAll") or ReplicatedStorage:FindFirstChild("CraftAll") -- [[ UPDATE REMOTE NAME IF NEEDED ]]
 
 -- Variables
 local autoFarmEnabled = false
 local autoCaptureEnabled = false
 local autoClickEnabled = false
+local autoRebirthEnabled = false
+local autoEquipEnabled = false
+local autoCraftEnabled = false
 local selectedTarget = nil
 
 -- ═══════════════════════════════════════════════════════════
@@ -482,8 +488,45 @@ AutoSection:Toggle({
 -- ═══════════════════════════════════════════════════════════
 -- PLAYER TAB
 -- ═══════════════════════════════════════════════════════════
+-- ═══════════════════════════════════════════════════════════
+-- PLAYER TAB
+-- ═══════════════════════════════════════════════════════════
+local StatsSection = PlayerTab:Section({ Title = "Progression", Icon = "trending-up", Opened = true })
+local CraftSection = PlayerTab:Section({ Title = "Crafting", Icon = "hammer", Opened = true })
 local MovementSection = PlayerTab:Section({ Title = "Movement", Icon = "footprints", Opened = true })
-local StatsSection = PlayerTab:Section({ Title = "Stats", Icon = "bar-chart", Opened = true })
+
+-- Auto Rebirth
+StatsSection:Toggle({
+    Title = "Auto Rebirth",
+    Desc = "Automatically rebirth when ready",
+    Value = false,
+    Callback = function(state)
+        autoRebirthEnabled = state
+        NebubloxUI:Notify({ Title = "Auto Rebirth", Content = state and "ON" or "OFF", Icon = "refresh-cw", Duration = 2 })
+    end
+})
+
+-- Auto Best Equip
+StatsSection:Toggle({
+    Title = "Auto Best Equip",
+    Desc = "Always equip best items",
+    Value = false,
+    Callback = function(state)
+        autoEquipEnabled = state
+        NebubloxUI:Notify({ Title = "Auto Equip", Content = state and "ON" or "OFF", Icon = "shield", Duration = 2 })
+    end
+})
+
+-- Craft Gold
+CraftSection:Toggle({
+    Title = "Auto Craft Gold",
+    Desc = "Automatically craft Gold items",
+    Value = false,
+    Callback = function(state)
+        autoCraftEnabled = state
+        NebubloxUI:Notify({ Title = "Auto Craft", Content = state and "Crafting Gold..." or "Stopped", Icon = "hammer", Duration = 2 })
+    end
+})
 
 MovementSection:Slider({
     Title = "WalkSpeed",
@@ -583,6 +626,21 @@ spawn(function()
                 -- Teleport to entity
                 player.Character.HumanoidRootPart.CFrame = entity.Root.CFrame + Vector3.new(0, 3, 0)
             end
+        end
+
+        -- Auto Rebirth
+        if autoRebirthEnabled and RebirthEvent then
+            RebirthEvent:FireServer()
+        end
+
+        -- Auto Best Equip
+        if autoEquipEnabled and EquipBest then
+            EquipBest:FireServer()
+        end
+
+        -- Auto Craft Gold (loop)
+        if autoCraftEnabled and CraftAll then
+            CraftAll:FireServer("Gold") -- Assuming "Gold" is the argument, or adjust if needed
         end
     end
 end)
