@@ -312,14 +312,15 @@ local RollSection = FruitsTab:Section({ Title = "Gacha Rolling", Icon = "dice-5"
 local SceneSection = FruitsTab:Section({ Title = "Scenes/Worlds", Icon = "map", Opened = true })
 
 -- Scene data with gachas and teleport coordinates
+-- Scene data with gachas and Workspace names
 local SCENES = {
-    { Name = "Scene 1 - Pirate Village",       CFrame = CFrame.new(0, 50, 0), --[[ UPDATE COORDS ]] Gachas = {"Shock Fruit", "Flame Fruit"} },
-    { Name = "Scene 2 - Ninja Village",        CFrame = CFrame.new(0, 50, 0), --[[ UPDATE COORDS ]] Gachas = {"Sharingan", "Tessen"} },
-    { Name = "Scene 3 - Shirayuki Village",    CFrame = CFrame.new(0, 50, 0), --[[ UPDATE COORDS ]] Gachas = {"Nichirian Earring", "SwordsSmith Mask"} },
-    { Name = "Scene 4 - Cursed Arts Hamlet",   CFrame = CFrame.new(0, 50, 0), --[[ UPDATE COORDS ]] Gachas = {"Impression Ring", "Prison Realm"} },
-    { Name = "Scene 5 - Arcane City Lofts",    CFrame = CFrame.new(0, 50, 0), --[[ UPDATE COORDS ]] Gachas = {"One Punch", "Monster Cell"} },
-    { Name = "Scene 6 - Lookout",              CFrame = CFrame.new(0, 50, 0), --[[ UPDATE COORDS ]] Gachas = {"Scouter", "Dragon Radar"} },
-    { Name = "Scene 7 - Duck Research Center", CFrame = CFrame.new(0, 50, 0), --[[ UPDATE COORDS ]] Gachas = {"Speed Mark", "Life Mark"} },
+    { Name = "Scene 1 - Pirate Village",       Island = "Island1", Gachas = {"Shock Fruit", "Flame Fruit"} },
+    { Name = "Scene 2 - Ninja Village",        Island = "Island2", Gachas = {"Sharingan", "Tessen"} },
+    { Name = "Scene 3 - Shirayuki Village",    Island = "Island3", Gachas = {"Nichirian Earring", "SwordsSmith Mask"} },
+    { Name = "Scene 4 - Cursed Arts Hamlet",   Island = "Island4", Gachas = {"Impression Ring", "Prison Realm"} },
+    { Name = "Scene 5 - Arcane City Lofts",    Island = "Island5", Gachas = {"One Punch", "Monster Cell"} },
+    { Name = "Scene 6 - Lookout",              Island = "Island6", Gachas = {"Scouter", "Dragon Radar"} },
+    { Name = "Scene 7 - Duck Research Center", Island = "Island7", Gachas = {"Speed Mark", "Life Mark"} },
 }
 
 local autoRollEnabled = false
@@ -408,18 +409,40 @@ SceneSection:Dropdown({
 })
 
 -- Teleport Button
+-- Teleport Button
 SceneSection:Button({
     Title = "Teleport to Scene",
     Desc = "Teleport to selected location",
     Icon = "zap",
     Callback = function()
-        if selectedScene and selectedScene.CFrame then
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                player.Character.HumanoidRootPart.CFrame = selectedScene.CFrame
-                NebubloxUI:Notify({ Title = "Teleported!", Content = "Arrived at " .. selectedScene.Name, Icon = "check", Duration = 2 })
+        if selectedScene and selectedScene.Island then
+            -- Find the island in Workspace
+            local island = Workspace:FindFirstChild(selectedScene.Island)
+            
+            if island then
+                -- Try to find a good teleport spot (Spawn, Part, or just above center)
+                local targetCFrame = island:IsA("Model") and (island.PrimaryPart and island.PrimaryPart.CFrame or island:GetModelCFrame()) or island.CFrame
+                
+                if island:IsA("Folder") then
+                     -- If it's a folder, look for a "Spawn" or "Base" part
+                    local spawnPart = island:FindFirstChild("Spawn") or island:FindFirstChild("Base") or island:FindFirstChild("Floor")
+                    if spawnPart then
+                        targetCFrame = spawnPart.CFrame
+                    else
+                         NebubloxUI:Notify({ Title = "Error", Content = "Could not find part in " .. selectedScene.Island, Icon = "x", Duration = 2 })
+                         return
+                    end
+                end
+
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    player.Character.HumanoidRootPart.CFrame = targetCFrame + Vector3.new(0, 10, 0)
+                    NebubloxUI:Notify({ Title = "Teleported!", Content = "Arrived at " .. selectedScene.Name, Icon = "check", Duration = 2 })
+                end
+            else
+                NebubloxUI:Notify({ Title = "Error", Content = selectedScene.Island .. " not found in Workspace", Icon = "x", Duration = 2 })
             end
         else
-            NebubloxUI:Notify({ Title = "Error", Content = "No coordinates set for this scene!", Icon = "x", Duration = 2 })
+            NebubloxUI:Notify({ Title = "Error", Content = "No island set for this scene!", Icon = "x", Duration = 2 })
         end
     end
 })
