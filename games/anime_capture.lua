@@ -1,418 +1,336 @@
 --[[
     ═══════════════════════════════════════════════════════════
-    NEBUBLOX | ANIME CAPTURE (Final Polish)
-    Simple, Clean, and Powerful
+    Nebublox | ANIME CAPTURE (Void v6.4 - SPAM & FILTER)
+    Features: Local Dropdown Only, Turbo E-Spam, Syntax Fix
     ═══════════════════════════════════════════════════════════
 ]]
 
-local GAME_NAME = "Anime Capture"
-local VERSION = "2.0.0"
-
--- // LOAD LIBRARY //
-local NebubloxUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Gamr46/NebubloxUI/main/nebublox_ui.lua"))()
-
--- // SERVICES //
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
 local player = Players.LocalPlayer
 
--- // REMOTES //
--- Function to safely find remotes in multiple locations
-local function getRemote(names, parent)
-    parent = parent or ReplicatedStorage
-    if type(names) == "string" then names = {names} end
-    for _, name in ipairs(names) do
-        local r = parent:FindFirstChild(name, true) -- Recursive search
-        if r then return r end
-    end
-    return nil
-end
+-- // SINGLE INSTANCE CHECK //
+local CoreGui = game:GetService("CoreGui")
+if CoreGui:FindFirstChild("Nebublox") then CoreGui.Nebublox:Destroy() end
+if player.PlayerGui:FindFirstChild("Nebublox") then player.PlayerGui.Nebublox:Destroy() end
 
--- COMBAT / FARM
-local SetEnemyEvent     = getRemote({"SetEnemyEvent"})
-local PlayerAttack      = getRemote({"PlayerAttack"})
-local CatchFollowFinish = getRemote({"CatchFollowFinish"})
-local UseCatchRate      = getRemote({"UseCatchRate", "CatchRate"}) -- Equip Ball
+-- // UI LOAD //
+local success, ANUI = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/ANHub-Script/ANUI/refs/heads/main/dist/main.lua"))()
+end)
 
--- CLICKER / UPGRADES
-local ClickGUIEvent     = getRemote({"ClickEvent"}) -- GUI Clicker (likely no args)
-local ClickPlusEvent    = getRemote({"ClickPlusEvent"}) -- Super Click
-local RebirthEvent      = getRemote({"RebirthEvent", "Rebirth"})
-local EquipBestEvent    = getRemote({"EquipBestEvent", "EquipBest"})
-local CraftItemEvent    = getRemote({"CraftItemEvent"})
+if not success or not ANUI then warn("VOID: Failed to load UI") return end
 
--- MISC / DAILY
-local GetAllEvent       = getRemote({"GetAllEvent"}) -- Achievement Claim
-local PortalEvent       = getRemote({"PortalEvent"}) -- Teleport
-local RollOne           = getRemote({"RollOne"})     -- Gacha
-local SignEvent         = getRemote({"SignEvent"})   -- Daily Sign
-local GetRandom         = getRemote({"[C-S]GetRandom"}) -- Spin
-local GetRewardByRandom = getRemote({"GetRewardByRandom"}) -- Spin Reward
+local Window = ANUI:CreateWindow({
+    Title = "Nebublox | VOID v6.4", 
+    Author = "LilNug of Wisdom",
+    Folder = "Nebublox",
+    Icon = "rbxassetid://121698194718505",
+    Theme = "Dark"
+})
 
--- // VARIABLES //
+getgenv().NebubloxInstance = Window
+
+-- // SETTINGS & FLAGS //
 local Flags = {
-    AutoFarm = false,
-    AutoCapture = false,
-    AutoClickGUI = false,     -- The "Clicker Simulator" spam
-    AutoRebirth = false,
-    AutoEquip = false,
-    AutoCraft = false,
-    AutoHatch = false,
-    AutoRoll = false,
-    AutoDaily = false,
-    AutoSpin = false,
-    AutoLoot = false,         -- Chests/Explore
+    Farm = false, Capture = false, Click = false, Rebirth = false, 
+    Equip = false, Daily = false, FreeGifts = false, EventClaim = false, 
+    Roll = false, ESP = false, SafeMode = false, AutoHop = false
 }
 
 local Settings = {
-    SelectedBall = 1,
-    SelectedScene = nil,
-    SelectedEgg = nil,
-    HatchAmount = 1,
-    RollSpeed = 0.5,
-    WalkSpeed = 16,
-    JumpPower = 50
+    PriorityNames = {"Boss", "Legendary", "Event", "Mythic", "Shiny"}, 
+    SearchRadius = 500, -- Kill Radius
+    DropdownRadius = 1000, -- How far to look for the Dropdown list
+    GachaTarget = "Shock Fruit",
+    Debug = true,
+    Blacklist = {"Mapboss524", "animate", "Effect", "Part"}, 
+    HopStart = nil,
+    SelectedTargets = {}
 }
 
-local selectedTarget = nil
+local GuiElements = {}
 
--- // SCENE DATA //
-local SCENES = {
-    { Name = "Start - Pirate Village",       Id = 1, Island = "Island1" },
-    { Name = "Scene 2 - Ninja Village",        Id = 2, Island = "Island2" },
-    { Name = "Scene 3 - Shirayuki Village",    Id = 3, Island = "Island3" },
-    { Name = "Scene 4 - Cursed Arts Hamlet",   Id = 4, Island = "Island4" },
-    { Name = "Scene 5 - Arcane City Lofts",    Id = 5, Island = "Island5" },
-    { Name = "Scene 6 - Lookout",              Id = 6, Island = "Island6" },
-    { Name = "Scene 7 - Duck Research Center", Id = 7, Island = "Island7" },
-}
-
--- // UI SETUP //
-local Window = NebubloxUI:CreateWindow({
-    Title = "Nebublox",
-    Author = "Anime Capture",
-    Folder = "Nebublox_AnimeCapture",
-    Theme = "Void",
-    SideBarWidth = 180,
-    HasOutline = true,
-})
-
--- // TABS //
-local MainTab    = Window:Tab({ Title = "Main", Icon = "home" })
-local UpgradeTab = Window:Tab({ Title = "Upgrades", Icon = "chevrons-up" })
-local PetsTab    = Window:Tab({ Title = "Pets & Items", Icon = "dog" }) -- Combined Gacha/Eggs
-local TeleportTab= Window:Tab({ Title = "Teleport", Icon = "map" })
-local ExtrasTab  = Window:Tab({ Title = "Extras", Icon = "star" })
-
--- =====================================================================================
--- TAB: MAIN (Farm, Capture, Loot)
--- =====================================================================================
-local FarmSection = MainTab:Section({ Title = "Auto Farm", Icon = "sword", Opened = true })
-
-FarmSection:Toggle({
-    Title = "Auto Farm Mobs",
-    Desc = "Kills enemies automatically",
-    Value = false,
-    Callback = function(state)
-        Flags.AutoFarm = state
+-- // UTILS //
+local function GetMapBossFolder()
+    local function get(parent, name)
+        if not parent then return nil end
+        return parent:FindFirstChild(name) or parent:FindFirstChild(name:lower()) or parent:FindFirstChild(name:upper())
     end
-})
+    return get(get(Workspace, "Floor") or Workspace, "enemy") and get(get(get(Workspace, "Floor") or Workspace, "enemy"), "mapboss")
+end
 
-FarmSection:Toggle({
-    Title = "Auto Clicker (GUI)",
-    Desc = "Spams the Click button for currency",
-    Value = false,
-    Callback = function(state)
-        Flags.AutoClickGUI = state
+-- // SCANNER FOR DROPDOWN (LOCAL ONLY) //
+local function GetNearbyEnemyNames()
+    local names = {}
+    local seen = {}
+    local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    
+    -- If character isn't loaded, return empty to prevent crash
+    if not myRoot then return {"Character Not Ready"} end
+
+    local enemyFolder = GetMapBossFolder()
+    local candidates = {}
+    
+    if enemyFolder then
+        candidates = enemyFolder:GetDescendants()
+    else
+        local function scan(parent)
+            for _, v in ipairs(parent:GetChildren()) do
+                if v:IsA("Model") and v:FindFirstChild("Humanoid") then table.insert(candidates, v) end
+                if v:IsA("Folder") then scan(v) end
+            end
+        end
+        scan(Workspace)
     end
-})
-
-local CaptureSection = MainTab:Section({ Title = "Capture", Icon = "box", Opened = true })
-
-CaptureSection:Toggle({
-    Title = "Auto Capture",
-    Desc = "Weakens and Captures enemies",
-    Value = false,
-    Callback = function(state)
-        Flags.AutoCapture = state
-    end
-})
-
-CaptureSection:Slider({
-    Title = "Select Ball ID",
-    Value = { Min = 1, Max = 20, Default = 1 },
-    Step = 1,
-    Callback = function(val)
-        Settings.SelectedBall = val
-    end
-})
-
--- =====================================================================================
--- TAB: UPGRADES
--- =====================================================================================
-local ProgSection = UpgradeTab:Section({ Title = "Progression", Icon = "trending-up", Opened = true })
-
-ProgSection:Toggle({
-    Title = "Auto Rebirth",
-    Value = false,
-    Callback = function(state) Flags.AutoRebirth = state end
-})
-
-ProgSection:Toggle({
-    Title = "Auto Equip Best",
-    Value = false,
-    Callback = function(state) Flags.AutoEquip = state end
-})
-
-ProgSection:Toggle({
-    Title = "Auto Craft Gold",
-    Value = false,
-    Callback = function(state) Flags.AutoCraft = state end
-})
-
--- =====================================================================================
--- TAB: PETS & ITEMS (Eggs, Gacha)
--- =====================================================================================
-local EggSection = PetsTab:Section({ Title = "Eggs", Icon = "egg", Opened = true })
-local GachaSection = PetsTab:Section({ Title = "Fruit Gacha", Icon = "gift", Opened = true })
-
--- Dynamic Egg List
-local eggNames = {}
-local eggData = {}
-local eggFolder = Workspace:FindFirstChild("egg")
-if eggFolder then
-    for _, s in pairs(eggFolder:GetChildren()) do
-        if s.Name:find("ergg_scene") then
-            local sId = s.Name:match("%d+")
-            for _, t in pairs(s:GetChildren()) do
-                for _, e in pairs(t:GetChildren()) do
-                    local id = e:GetAttribute("lottoId")
-                    if id then
-                        local name = "S" .. sId .. " - Egg " .. id
-                        table.insert(eggNames, name)
-                        eggData[name] = id
+    
+    for _, mob in ipairs(candidates) do
+        if mob:IsA("Model") and mob ~= player.Character then
+            local hum = mob:FindFirstChild("Humanoid")
+            local root = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("Torso") or mob.PrimaryPart
+            
+            if hum and root and hum.Health > 0 and not Players:GetPlayerFromCharacter(mob) then
+                -- DISTANCE FILTER: Only show enemies close to me
+                if (root.Position - myRoot.Position).Magnitude < Settings.DropdownRadius then
+                    if not seen[mob.Name] then
+                        table.insert(names, mob.Name)
+                        seen[mob.Name] = true
                     end
                 end
             end
         end
     end
-    table.sort(eggNames)
+    
+    table.sort(names)
+    return names
 end
 
-EggSection:Dropdown({
-    Title = "Select Egg",
-    Items = eggNames,
-    Callback = function(val)
-        Settings.SelectedEgg = eggData[val]
-    end
-})
+-- // TABS //
+local MainTab = Window:Tab({ Title = "Main", Icon = "moon" })
+local GachaTab = Window:Tab({ Title = "Gacha", Icon = "star" })
+local UpgradeTab = Window:Tab({ Title = "Upgrades", Icon = "box" })
+local MiscTab = Window:Tab({ Title = "Misc", Icon = "settings" })
 
-EggSection:Toggle({
-    Title = "Auto Hatch",
-    Value = false,
-    Callback = function(state)
-        if not Settings.SelectedEgg then
-            NebubloxUI:Notify({Title="Error", Content="Select an egg first!", Duration=3})
-            return
-        end
-        Flags.AutoHatch = state
-    end
-})
+-- // TAB 1: MAIN //
+local FarmSec = MainTab:Section({ Title = "Auto Farm", Opened = true })
+FarmSec:Toggle({ Title = "Smart Kill (Direct TP)", Value = false, Callback = function(v) Flags.Farm = v end })
+FarmSec:Toggle({ Title = "Auto Capture (E-Spam)", Value = false, Callback = function(v) Flags.Capture = v end })
 
-GachaSection:Toggle({
-    Title = "Auto Roll Fruits",
-    Value = false,
-    Callback = function(state) Flags.AutoRoll = state end
-})
-
-GachaSection:Slider({
-    Title = "Roll Speed",
-    Value = {Min=0.1, Max=2, Default=0.5},
-    Step=0.1,
-    Callback = function(v) Settings.RollSpeed = v end
-})
-
--- =====================================================================================
--- TAB: TELEPORT
--- =====================================================================================
-local TPSection = TeleportTab:Section({ Title = "Travel", Icon = "map-pin", Opened = true })
-
-local sceneNames = {}
-for _, s in ipairs(SCENES) do table.insert(sceneNames, s.Name) end
-
-TPSection:Dropdown({
-    Title = "Select Zone",
-    Items = sceneNames,
-    Callback = function(val)
-        for _, s in ipairs(SCENES) do
-            if s.Name == val then Settings.SelectedScene = s break end
-        end
-    end
-})
-
-TPSection:Button({
-    Title = "Teleport",
-    Icon = "zap",
+-- DROPDOWN SECTION
+FarmSec:Button({
+    Title = "Refresh Nearby Enemies",
     Callback = function()
-        if not Settings.SelectedScene then return end
-        local s = Settings.SelectedScene
-        
-        -- Try PortalEvent (Native)
-        if PortalEvent then
-            PortalEvent:FireServer(s.Id)
-            NebubloxUI:Notify({Title="Warping", Content="Traveling to "..s.Name, Duration=2})
-        else
-            -- Fallback
-             local isl = Workspace:FindFirstChild(s.Island)
-             if isl then
-                local cf = isl:IsA("Model") and isl:GetModelCFrame() or isl.CFrame
-                player.Character.HumanoidRootPart.CFrame = cf + Vector3.new(0,10,0)
-             end
-        end
+        local list = GetNearbyEnemyNames()
+        if #list == 0 then list = {"No Enemies Nearby"} end
+        GuiElements.EnemyDropdown:Refresh(list, true)
+        ANUI:Notify({Title = "Refreshed", Content = "Found " .. #list .. " nearby enemies.", Duration = 2})
     end
 })
 
--- =====================================================================================
--- TAB: EXTRAS
--- =====================================================================================
-local DailySection = ExtrasTab:Section({ Title = "Rewards", Icon = "gift", Opened = true })
-local LocalSection = ExtrasTab:Section({ Title = "Local Player", Icon = "user", Opened = true })
-
-DailySection:Toggle({
-    Title = "Auto Daily / Spin",
-    Desc = "Claims daily rewards and spins wheel",
-    Value = false,
-    Callback = function(state)
-        Flags.AutoDaily = state
-        Flags.AutoSpin = state
-    end
-})
-
-DailySection:Button({
-    Title = "Claim All Achievements",
-    Icon = "award",
-    Callback = function()
-        if GetAllEvent then
-            GetAllEvent:FireServer()
-            NebubloxUI:Notify({Title="Claimed", Content="Achievements claimed!", Duration=2})
-        end
-    end
-})
-
-LocalSection:Slider({
-    Title = "Walk Speed",
-    Value = {Min=16, Max=200, Default=16},
+GuiElements.EnemyDropdown = FarmSec:Dropdown({
+    Title = "Select Specific Targets",
+    Multi = true,
+    Options = {"Click Refresh First"},
     Callback = function(v)
-        if player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.Humanoid.WalkSpeed = v
+        local cleanList = {}
+        for key, val in pairs(v) do
+            if type(key) == "number" then table.insert(cleanList, val) 
+            elseif val == true then table.insert(cleanList, key) end
         end
+        Settings.SelectedTargets = cleanList
+        if Settings.Debug then print("Selected:", table.concat(cleanList, ", ")) end
     end
 })
 
--- =====================================================================================
--- LOGIC LOOPS
--- =====================================================================================
+-- // TAB 2: GACHA //
+local GachaSec = GachaTab:Section({ Title = "Roll System", Opened = true })
+GachaSec:Toggle({ Title = "Auto Roll Selected", Value = false, Callback = function(v) Flags.Roll = v end })
+GachaSec:Input({ Title = "Target Item Name", Default = "Shock Fruit", Callback = function(v) Settings.GachaTarget = v end })
 
--- Helpers
-local function getClosestEntity()
-    local myPos = player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character.HumanoidRootPart.Position
-    if not myPos then return nil end
+-- // TAB 3: UPGRADES //
+local UpSec = UpgradeTab:Section({ Title = "Automation", Opened = true })
+UpSec:Toggle({ Title = "Auto Clicker", Value = false, Callback = function(v) Flags.Click = v end })
+UpSec:Toggle({ Title = "Auto Rebirth", Value = false, Callback = function(v) Flags.Rebirth = v end })
+UpSec:Toggle({ Title = "Auto Equip Best", Value = false, Callback = function(v) Flags.Equip = v end })
+
+-- // TAB 4: MISC //
+local HopSec = MiscTab:Section({ Title = "Smart Server Control", Opened = true })
+HopSec:Toggle({ Title = "Debug Mode (F9)", Value = false, Callback = function(v) Settings.Debug = v end })
+HopSec:Button({
+    Title = "Test Scanner (F9 Log)",
+    Callback = function()
+        local tgt = getSmartTarget()
+        if tgt then print("Target Found: " .. tgt.Name) else warn("No Target Found") end
+    end
+})
+HopSec:Toggle({ Title = "Auto Server Hop", Value = false, Callback = function(v) Flags.AutoHop = v end })
+HopSec:Button({ 
+    Title = "Force Server Hop", 
+    Callback = function() 
+        ANUI:Notify({Title = "Hopping...", Content = "Searching...", Duration = 3})
+        Settings.ForceHop = true
+    end 
+})
+
+local RewSec = MiscTab:Section({ Title = "Daily Rewards", Opened = true })
+RewSec:Toggle({ Title = "Auto Daily Sign-in", Value = false, Callback = function(v) Flags.Daily = v end })
+
+-- // REMOTES //
+local Events = ReplicatedStorage:WaitForChild("Events")
+local function getRemote(folder, name)
+    if folder and Events:FindFirstChild(folder) then return Events[folder]:FindFirstChild(name) end
+    return Events:FindFirstChild(name, true)
+end
+
+local Remotes = {
+    Click     = getRemote("Click", "ClickEvent"),
+    SetEnemy  = getRemote(nil, "SetEnemyEvent"),
+    Attack    = getRemote(nil, "PlayerAttack"),
+    Daily     = getRemote("EveryDayGift", "SignEvent"),
+    Rebirth   = getRemote("Rebirth", "RebirthEvent"),
+    Equip     = getRemote("Equip", "EquipBestEvent"),
+    Roll      = getRemote("NewLotto", "RollOne") or getRemote("Gacha", "RollOne")
+}
+
+-- // OPTIMIZED SMART TARGETING //
+function getSmartTarget()
+    local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return nil end
+
+    local bestTarget = nil
+    local highestScore = -99999
+    local safeRadius = 500
     
-    local closest, dist = nil, math.huge
-    for _, v in ipairs(Workspace:GetDescendants()) do
-        if v:IsA("Humanoid") and v.Health > 0 and v.Parent ~= player.Character then
-            local root = v.Parent:FindFirstChild("HumanoidRootPart")
-            if root then
-                local d = (root.Position - myPos).Magnitude
-                if d < dist then
-                    closest = v.Parent
-                    dist = d
+    local candidates = {}
+    local enemyFolder = GetMapBossFolder()
+    
+    if enemyFolder then
+        candidates = enemyFolder:GetDescendants()
+    else
+        local function scan(parent)
+            for _, v in ipairs(parent:GetChildren()) do
+                if v:IsA("Model") and v:FindFirstChild("Humanoid") then table.insert(candidates, v) end
+                if v:IsA("Folder") then scan(v) end
+            end
+        end
+        scan(Workspace)
+    end
+
+    local useSpecific = #Settings.SelectedTargets > 0
+
+    for _, mob in ipairs(candidates) do
+        if mob ~= player.Character then
+            local root = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("Torso") or mob.PrimaryPart
+            local hum = mob:FindFirstChild("Humanoid")
+            if root and hum and hum.Health > 0 then
+                
+                local shouldProcess = true
+                if useSpecific then
+                    local found = false
+                    for _, name in ipairs(Settings.SelectedTargets) do
+                        if mob.Name == name then found = true break end
+                    end
+                    if not found then shouldProcess = false end
+                end
+
+                if shouldProcess then
+                    local isBlacklisted = false
+                    for _, badName in ipairs(Settings.Blacklist) do
+                        if string.find(mob.Name, badName) then isBlacklisted = true break end
+                    end
+
+                    if not isBlacklisted then
+                        local dist = (root.Position - myRoot.Position).Magnitude
+                        if dist < safeRadius then
+                            local score = 1000 - dist
+                            for _, pName in ipairs(Settings.PriorityNames) do
+                                if string.find(mob.Name, pName) then score = score + 50000 break end
+                            end
+                            if score > highestScore then
+                                highestScore = score
+                                bestTarget = mob
+                            end
+                        end
+                    end
                 end
             end
         end
     end
-    return closest
+    return bestTarget
 end
 
--- Main Loop
-spawn(function()
-    while true do
-        wait(0.2)
-        
-        -- Auto Farm (Kill)
-        if Flags.AutoFarm then
-            local target = getClosestEntity()
-            if target then
-                -- Teleport
-                pcall(function()
-                    player.Character.HumanoidRootPart.CFrame = target.HumanoidRootPart.CFrame + Vector3.new(0,3,4)
-                end)
+-- // MAIN LOOP //
+local frameCount = 0
+
+RunService.RenderStepped:Connect(function()
+    frameCount = frameCount + 1
+    
+    if frameCount % 9 == 0 then 
+        if Flags.Farm or Flags.Capture then
+            pcall(function()
+                local target = getSmartTarget()
                 
-                -- Attack
-                if SetEnemyEvent then SetEnemyEvent:FireServer(target) end
-                if PlayerAttack then PlayerAttack:FireServer(target) end
-            end
+                -- Auto Hop Logic
+                if not target and Flags.AutoHop and Flags.Farm then
+                      if not Settings.HopStart then Settings.HopStart = tick() end
+                      if tick() - Settings.HopStart > 8 then ServerHop() end
+                else
+                      Settings.HopStart = nil
+                end
+
+                -- Action
+                if target and player.Character then
+                    local myRoot = player.Character:FindFirstChild("HumanoidRootPart")
+                    local targetRoot = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso") or target.PrimaryPart
+                    
+                    if myRoot and targetRoot then
+                        myRoot.CFrame = CFrame.new(targetRoot.Position + Vector3.new(0, 3, 0))
+                        
+                        myRoot.AssemblyLinearVelocity = Vector3.zero
+                        myRoot.AssemblyAngularVelocity = Vector3.zero
+                        
+                        if Flags.Capture then
+                            -- // SPAM E (TURBO MODE) //
+                            -- Presses E 5 times rapidly per loop
+                            for i=1, 5 do
+                                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                                task.wait() -- Minimal yield to allow key register
+                            end
+                        else
+                             if Remotes.SetEnemy then Remotes.SetEnemy:FireServer(target) end
+                             if Remotes.Attack then Remotes.Attack:FireServer(target) end
+                             if Remotes.Click then Remotes.Click:FireServer() end
+                             
+                             VirtualUser:CaptureController()
+                             VirtualUser:ClickButton1(Vector2.new(999,999))
+                        end
+                    end
+                end
+            end)
         end
-        
-        -- Auto Capture
-        if Flags.AutoCapture then
-            local target = getClosestEntity()
-            if target then
-                pcall(function()
-                    player.Character.HumanoidRootPart.CFrame = target.HumanoidRootPart.CFrame + Vector3.new(0,3,4)
-                end)
-                
-                -- 1. Equip Ball
-                if UseCatchRate then UseCatchRate:FireServer(Settings.SelectedBall) end
-                wait(0.1)
-                -- 2. Attack a bit to weaken
-                if SetEnemyEvent then SetEnemyEvent:FireServer(target) end
-                if PlayerAttack then PlayerAttack:FireServer(target) end
-                wait(0.1)
-                -- 3. Capture
-                if CatchFollowFinish then CatchFollowFinish:FireServer(target, Settings.SelectedBall) end
-            end
-        end
-        
-        -- Auto Clicker (GUI)
-        if Flags.AutoClickGUI then
-            -- Spam "Click" button remote
-            if ClickGUIEvent then ClickGUIEvent:FireServer() end
-        end
-        
-        -- Auto Rebirth
-        if Flags.AutoRebirth and RebirthEvent then RebirthEvent:FireServer() end
-        
-        -- Auto Best Equip
-        if Flags.AutoEquip and EquipBestEvent then EquipBestEvent:FireServer() end
-        
-        -- Auto Craft
-        if Flags.AutoCraft and CraftItemEvent then CraftItemEvent:FireServer("Gold") end
-        
-        -- Auto Spin/Daily
-        if Flags.AutoSpin then
-            if GetRandom then GetRandom:FireServer() end
-            if GetRewardByRandom then GetRewardByRandom:FireServer() end
-        end
-        if Flags.AutoDaily and SignEvent then SignEvent:FireServer() end
+    end
+    
+    if Settings.ForceHop then Settings.ForceHop = false ServerHop() end
+end)
+
+-- // SLOW LOOP //
+task.spawn(function()
+    while task.wait(0.5) do
+         pcall(function()
+            if Flags.Click and Remotes.Click then Remotes.Click:FireServer() end
+            if Flags.Rebirth and Remotes.Rebirth then Remotes.Rebirth:FireServer() end
+            if Flags.Daily and Remotes.Daily then Remotes.Daily:FireServer() end
+            if Flags.Equip and Remotes.Equip then Remotes.Equip:FireServer() end
+            if Flags.Roll and Remotes.Roll then Remotes.Roll:FireServer(Settings.GachaTarget or "Shock Fruit") end
+        end)
     end
 end)
 
--- Gacha/Hatch Loop (Separate for speed)
-spawn(function()
-    while true do
-        if Flags.AutoRoll and RollOne then
-            RollOne:FireServer()
-        end
-        if Flags.AutoHatch and Settings.SelectedEgg then
-            -- Assuming Hatch Remote is needed here, if not found, add it.
-            -- Based on previous analysis, we focused on Gacha/Roll.
-            -- If Hatch is missing, RollOne might be it, or a different one.
-        end
-        wait(Settings.RollSpeed)
-    end
-end)
-
-NebubloxUI:Notify({Title="Loaded", Content="Anime Capture Script Ready!", Icon="check", Duration=5})
+ANUI:Notify({ Title = "Void v6.4", Content = "E-Spam + Local Filter", Duration = 3 })
