@@ -17,16 +17,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 
--- Game Remote Events (Anime Capture specific)
-local Remotes = ReplicatedStorage:WaitForChild("Remotes", 5) or ReplicatedStorage
-local SetEnemyEvent = Remotes:FindFirstChild("SetEnemyEvent") or ReplicatedStorage:FindFirstChild("SetEnemyEvent")
-local ClickEvent = Remotes:FindFirstChild("ClickEvent") or ReplicatedStorage:FindFirstChild("ClickEvent")
-local CatchFollowFinish = Remotes:FindFirstChild("CatchFollowFinish") or ReplicatedStorage:FindFirstChild("CatchFollowFinish")
-local PlayerAttack = Remotes:FindFirstChild("PlayerAttack") or ReplicatedStorage:FindFirstChild("PlayerAttack")
 local RollOne = Remotes:FindFirstChild("RollOne") or ReplicatedStorage:FindFirstChild("RollOne")
-local RebirthEvent = Remotes:FindFirstChild("RebirthEvent") or ReplicatedStorage:FindFirstChild("RebirthEvent") -- [[ UPDATE REMOTE NAME IF NEEDED ]]
-local EquipBest = Remotes:FindFirstChild("EquipBest") or ReplicatedStorage:FindFirstChild("EquipBest") -- [[ UPDATE REMOTE NAME IF NEEDED ]]
-local CraftAll = Remotes:FindFirstChild("CraftAll") or ReplicatedStorage:FindFirstChild("CraftAll") -- [[ UPDATE REMOTE NAME IF NEEDED ]]
+local RebirthEvent = Remotes:FindFirstChild("RebirthEvent") or ReplicatedStorage:FindFirstChild("RebirthEvent")
+local EquipBestEvent = Remotes:FindFirstChild("EquipBestEvent") or ReplicatedStorage:FindFirstChild("EquipBestEvent") -- UPDATED
+local CraftItemEvent = Remotes:FindFirstChild("CraftItemEvent") or ReplicatedStorage:FindFirstChild("CraftItemEvent") -- UPDATED
+local GetAllEvent = Remotes:FindFirstChild("GetAllEvent") or ReplicatedStorage:FindFirstChild("GetAllEvent") -- NEW (Achievements)
 
 -- Variables
 local autoFarmEnabled = false
@@ -35,7 +30,104 @@ local autoClickEnabled = false
 local autoRebirthEnabled = false
 local autoEquipEnabled = false
 local autoCraftEnabled = false
+local autoClaimAchievements = false
 local selectedTarget = nil
+local selectedBallId = 1 -- Default Ball ID
+
+-- ... (rest of code)
+
+-- ═══════════════════════════════════════════════════════════
+-- CAPTURE TAB
+-- ═══════════════════════════════════════════════════════════
+-- ... (Capture logic)
+
+CaptureSection:Slider({
+    Title = "Ball ID",
+    Desc = "ID of the ball to use for capture",
+    Value = { Min = 1, Max = 20, Default = 1 },
+    Step = 1,
+    Callback = function(val)
+        selectedBallId = val
+    end
+})
+
+CaptureSection:Button({
+    Title = "Capture Now",
+    Desc = "Fire CatchFollowFinish to capture",
+    Icon = "box",
+    Callback = function()
+        if selectedTarget and selectedTarget.Model then
+            if CatchFollowFinish then
+                -- Pass selectedBallId as second argument
+                CatchFollowFinish:FireServer(selectedTarget.Model, selectedBallId)
+                NebubloxUI:Notify({ Title = "Captured!", Content = "Caught " .. selectedTarget.Name, Icon = "check", Duration = 2 })
+            else
+                NebubloxUI:Notify({ Title = "Error", Content = "CatchFollowFinish not found", Icon = "x", Duration = 2 })
+            end
+        else
+            NebubloxUI:Notify({ Title = "No Target", Content = "Select a target first!", Icon = "alert-circle", Duration = 2 })
+        end
+    end
+})
+
+-- ... (rest of features)
+
+-- Auto Claim Achievements (using GetAllEvent)
+StatsSection:Toggle({
+    Title = "Auto Claim Achievements",
+    Desc = "Spam GetAllEvent to claim rewards",
+    Value = false,
+    Callback = function(state)
+        autoClaimAchievements = state
+        NebubloxUI:Notify({ Title = "Auto Claim", Content = state and "ON" or "OFF", Icon = "award", Duration = 2 })
+    end
+})
+
+
+-- BACKGROUND LOOPS UPDATE
+-- ...
+        -- Auto Capture loop (full sequence)
+        if autoCaptureEnabled then
+            local entity = getClosestEntity()
+            if entity and entity.Model then
+                -- Teleport close
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    player.Character.HumanoidRootPart.CFrame = entity.Root.CFrame + Vector3.new(0, 3, 0)
+                end
+                
+                -- Fire capture sequence
+                if SetEnemyEvent then SetEnemyEvent:FireServer(entity.Model) end
+                wait(0.1)
+                -- Auto attack first to weaken
+                if ClickEvent then ClickEvent:FireServer(entity.Model) end
+                wait(0.1)
+                if PlayerAttack then PlayerAttack:FireServer(entity.Model) end
+                wait(0.1)
+                -- Then capture with Ball ID
+                if CatchFollowFinish then CatchFollowFinish:FireServer(entity.Model, selectedBallId) end
+            end
+        end
+
+        -- Auto Rebirth
+        if autoRebirthEnabled and RebirthEvent then
+            RebirthEvent:FireServer()
+        end
+
+        -- Auto Best Equip
+        if autoEquipEnabled and EquipBestEvent then
+            EquipBestEvent:FireServer()
+        end
+        
+        -- Auto Claim Achievements
+        if autoClaimAchievements and GetAllEvent then
+            GetAllEvent:FireServer()
+        end
+
+        -- Auto Craft Gold (loop)
+        if autoCraftEnabled and CraftItemEvent then
+            CraftItemEvent:FireServer("Gold") 
+        end
+-- ...
 
 -- ═══════════════════════════════════════════════════════════
 -- HELPER FUNCTIONS
