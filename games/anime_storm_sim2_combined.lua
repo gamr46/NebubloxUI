@@ -14790,7 +14790,7 @@ end
 -- Known enemy names for each world
 local WorldEnemies = {
     OnePiece = {"Aokiji", "Doflamingo", "Kizaru", "Sengoku", "Akainu"},
-    Dbz = {},  -- Add DBZ enemies here when known
+    Dbz = {"Raditz", "Frieza", "Cell", "Android18", "Buu"},
     Naruto = {},  -- Add Naruto enemies here when known
     Jjk = {}  -- Add JJK enemies here when known
 }
