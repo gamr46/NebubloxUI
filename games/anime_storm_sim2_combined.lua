@@ -14787,26 +14787,31 @@ local function TweenTo(targetCFrame)
 end
 
 -- // UTILS //
-local function GetEnemyFolder()
-    local maps = Workspace:FindFirstChild("Maps")
-    if maps then
-        for _, world in ipairs(maps:GetChildren()) do
-            -- Only look for Enemies/Mobs folders, NOT NPCs
-            local enemies = world:FindFirstChild("Enemies") or world:FindFirstChild("Mobs")
-            if enemies then return enemies end
-        end
-    end
+-- Known enemy names for each world
+local WorldEnemies = {
+    OnePiece = {"Aokiji", "Doflamingo", "Kizaru", "Sengoku", "Akainu"},
+    Dbz = {},  -- Add DBZ enemies here when known
+    Naruto = {},  -- Add Naruto enemies here when known
+    Jjk = {}  -- Add JJK enemies here when known
+}
 
+local function GetEnemyFolder()
+    -- Primary: Workspace.Npc contains world folders (OnePiece, Dbz, etc.)
+    local npcFolder = Workspace:FindFirstChild("Npc")
+    if npcFolder then
+        return npcFolder  -- Return the parent, we'll scan all worlds
+    end
+    
+    -- Fallback paths
     local function get(parent, name)
         if not parent then return nil end
         return parent:FindFirstChild(name) or parent:FindFirstChild(name:lower()) or parent:FindFirstChild(name:upper())
     end
     
-    -- Prioritize Enemies folders, avoid NPCs
     local possiblePaths = {
+        get(Workspace, "Npc"),
         get(Workspace, "Enemies"),
         get(Workspace, "Mobs"),
-        get(get(Workspace, "World"), "Enemies")
     }
     
     for _, folder in ipairs(possiblePaths) do
