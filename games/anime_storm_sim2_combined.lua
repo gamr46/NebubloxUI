@@ -14695,10 +14695,58 @@ local Settings = {
     Blacklist = {"NPC", "Effect", "Part"}, 
     HopStart = nil,
     SelectedTargets = {},
-    SelectedEgg = "Egg1"
+    SelectedEgg = "Egg1",
+    AutoPickup = false, DropESP = false
 }
 
 local GuiElements = {}
+
+-- // CONFIG SYSTEM //
+local HttpService = game:GetService("HttpService")
+local ConfigFile = "Nebublox_StormSim_Config.json"
+
+local function SaveSettings()
+    local success, json = pcall(function() return HttpService:JSONEncode(Flags) end)
+    if success then writefile(ConfigFile, json) end
+end
+
+local function LoadSettings()
+    if isfile(ConfigFile) then
+        local success, content = pcall(function() return readfile(ConfigFile) end)
+        if success then
+            local decoded = HttpService:JSONDecode(content)
+            for k, v in pairs(decoded) do
+                if Flags[k] ~= nil then Flags[k] = v end
+            end
+        end
+    end
+end
+-- Auto Save Loop
+task.spawn(function()
+    while task.wait(10) do SaveSettings() end
+end)
+-- Load on startup
+LoadSettings()
+
+-- // TWEEN SETUP //
+local TweenService = game:GetService("TweenService")
+local currentTween = nil
+
+local function TweenTo(targetCFrame)
+    local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+    
+    local dist = (myRoot.Position - targetCFrame.Position).Magnitude
+    if dist < 5 then
+        myRoot.CFrame = targetCFrame
+        return
+    end
+    
+    local info = TweenInfo.new(dist / 300, Enum.EasingStyle.Linear)
+    if currentTween then currentTween:Cancel() end
+    currentTween = TweenService:Create(myRoot, info, {CFrame = targetCFrame})
+    currentTween:Play()
+end
 
 -- // UTILS //
 local function GetEnemyFolder()
@@ -15438,20 +15486,44 @@ RunService.RenderStepped:Connect(function()
                 end
 
                 -- Farm Action
-                if target and player.Character then
+                if Flags.Farm and player.Character then
                     local myRoot = player.Character:FindFirstChild("HumanoidRootPart")
-                    local targetRoot = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso") or target.PrimaryPart
+                    local hum = player.Character:FindFirstChild("Humanoid")
                     
-                    if myRoot and targetRoot then
-                        myRoot.CFrame = CFrame.new(targetRoot.Position + Vector3.new(0, 3, 0))
-                        myRoot.AssemblyLinearVelocity = Vector3.zero
-                        myRoot.AssemblyAngularVelocity = Vector3.zero
-                        
-                        if Remotes.Attack then Remotes.Attack:FireServer(target) end
-                        if Remotes.Click then Remotes.Click:FireServer() end
-                        
-                        VirtualUser:CaptureController()
-                        VirtualUser:ClickButton1(Vector2.new(999,999))
+                    -- Safe Mode
+                    if hum and hum.Health > 0 and hum.Health < (hum.MaxHealth * 0.3) then
+                         local safePlate = Workspace:FindFirstChild("NebuSafePlate")
+                         if not safePlate then
+                             safePlate = Instance.new("Part")
+                             safePlate.Name = "NebuSafePlate"
+                             safePlate.Size = Vector3.new(50, 1, 50)
+                             safePlate.Position = Vector3.new(0, 5000, 0)
+                             safePlate.Anchored = true
+                             safePlate.Parent = Workspace
+                         end
+                         myRoot.CFrame = safePlate.CFrame + Vector3.new(0, 5, 0)
+                         return
+                    end
+
+                    local target = GetBestTarget() -- Corrected function name
+                    if target then
+                        local tRoot = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso") or target.PrimaryPart
+                        if tRoot and myRoot then
+                            local farmCFrame = tRoot.CFrame * CFrame.new(0, 5, 4) -- Behind and above
+                            
+                            -- Tween Movement
+                            TweenTo(farmCFrame)
+                            
+                            -- Velocity Reset
+                            myRoot.AssemblyLinearVelocity = Vector3.zero
+                            myRoot.AssemblyAngularVelocity = Vector3.zero
+                            
+                            if Remotes.Attack then Remotes.Attack:FireServer(target) end
+                            if Remotes.Click then Remotes.Click:FireServer() end
+                            
+                            VirtualUser:CaptureController()
+                            VirtualUser:ClickButton1(Vector2.new(999,999))
+                        end
                     end
                 end
             end)
