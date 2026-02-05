@@ -14712,13 +14712,20 @@ local Flags = {
 local Settings = {
     PriorityNames = {"Boss", "Legendary", "Event", "Mythic", "Shiny"}, 
     SearchRadius = 500,
-    DropdownRadius = 1000,
+    DropdownRadius = 750,
     GachaTarget = "Shock Element",
     Debug = true,
     Blacklist = {"NPC", "Effect", "Part"}, 
     HopStart = nil,
     SelectedTargets = {},
     SelectedEgg = "Egg1"
+}
+
+-- Egg names list for dropdown
+local EggNames = {
+    "OnePieceEgg", "DbzEgg", "NarutoEgg", "JjkEgg",
+    "OnePieceGoldenEgg", "DbzGoldenEgg", "NarutoGoldenEgg", "JjkGoldenEgg",
+    "RareEgg", "LegendaryEgg", "MythicEgg"
 }
 
 local GuiElements = {}
@@ -14921,9 +14928,9 @@ GuiElements.EnemyDropdown = FarmSec:Dropdown({
 -- // TAB 1.5: EGGS //
 local HatchSec = EggsTab:Section({ Title = "Auto Hatch", Opened = true })
 
-HatchSec:Input({
-    Title = "Egg Name",
-    Default = "Egg1",
+HatchSec:Dropdown({
+    Title = "Select Egg",
+    Options = EggNames,
     Callback = function(v) Settings.SelectedEgg = v end
 })
 
@@ -14954,8 +14961,12 @@ JjkGachaSec:Toggle({ Title = "Auto Upgrade Cursed Energy", Value = Flags.CursedP
 -- // TAB 3: UPGRADES //
 local UpSec = UpgradeTab:Section({ Title = "Automation", Opened = true })
 UpSec:Toggle({ Title = "Auto Rebirth", Value = Flags.Rebirth, Callback = function(v) Flags.Rebirth = v end })
-UpSec:Toggle({ Title = "Auto Equip Best", Value = Flags.Equip, Callback = function(v) Flags.Equip = v end })
-UpSec:Toggle({ Title = "Auto Use Skills", Value = Flags.AutoSkills, Callback = function(v) Flags.AutoSkills = v end })
+UpSec:Button({ Title = "Equip Best Pets", Callback = function()
+    if Remotes.PetEquip then
+        pcall(function() Remotes.PetEquip:InvokeServer("EquipBest") end)
+        ANUI:Notify({Title = "Equip", Content = "Equipped best pets!", Duration = 2})
+    end
+end })
 
 local PotSec = UpgradeTab:Section({ Title = "Potions (Auto Drink)", Opened = true })
 PotSec:Toggle({ Title = "Auto Strength Potion", Value = Flags.PotStr, Callback = function(v) Flags.PotStr = v end })
@@ -14963,13 +14974,8 @@ PotSec:Toggle({ Title = "Auto Drops Potion", Value = Flags.PotDrop, Callback = f
 PotSec:Toggle({ Title = "Auto Luck Potion", Value = Flags.PotLuck, Callback = function(v) Flags.PotLuck = v end })
 PotSec:Toggle({ Title = "Auto Gem Potion", Value = Flags.PotGem, Callback = function(v) Flags.PotGem = v end })
 
--- // TAB 4: MISC //
-local WorldSec = MiscTab:Section({ Title = "World Teleportation", Opened = true })
-WorldSec:Button({ Title = "Teleport to Pirate World", Callback = function() if Remotes.World then Remotes.World:FireServer("OnePiece", "Teleport") end end })
-WorldSec:Button({ Title = "Teleport to DBZ World", Callback = function() if Remotes.World then Remotes.World:FireServer("Dbz", "Teleport") end end })
-WorldSec:Button({ Title = "Teleport to Shinobi World", Callback = function() if Remotes.World then Remotes.World:FireServer("Naruto", "Teleport") end end })
-WorldSec:Button({ Title = "Teleport to Cursed World", Callback = function() if Remotes.World then Remotes.World:FireServer("Jjk", "Teleport") end end })
 
+-- // TAB 4: MISC //
 local BossRushSec = MiscTab:Section({ Title = "Boss Rush Mode", Opened = true })
 BossRushSec:Toggle({
     Title = "Auto Start DBZ Boss Rush",
@@ -15208,9 +15214,8 @@ RunService.RenderStepped:Connect(function()
     if Settings.ForceHop then Settings.ForceHop = false ServerHop() end
 end)
 
--- // SLOW LOOP //
+-- // SLOW LOOP (General automation) //
 local achTick = 0
-local potTick = 0 
 task.spawn(function()
     while task.wait(0.5) do
          achTick = achTick + 1
@@ -15226,21 +15231,6 @@ task.spawn(function()
                     for i = 1, 30 do Remotes.Achievement:FireServer("Claim", i) end
                  end
             end
-            
-            if Flags.Equip and Remotes.PetEquip then 
-                task.spawn(function() pcall(function() Remotes.PetEquip:InvokeServer("EquipBest") end) end)
-            end
-            
-            -- Gacha & Upgrades
-            if Flags.RollCrew and Remotes.SpecialPerk then Remotes.SpecialPerk:FireServer("Spin", "OnePieceCrew") end
-            if Flags.RollFruit and Remotes.SpecialPerk then Remotes.SpecialPerk:FireServer("Spin", "OnePieceFruit") end
-            if Flags.RollSaiyan and Remotes.SpecialPerk then Remotes.SpecialPerk:FireServer("Spin", "DbzSaiyan") end
-            if Flags.KiProgression and Remotes.SpecialProgression then Remotes.SpecialProgression:FireServer("UpgradeProgression", "KiProgression") end
-            if Flags.RollTailedBeast and Remotes.SpecialPerk then Remotes.SpecialPerk:FireServer("Spin", "NarutoTailedBeast") end
-            if Flags.RollClan and Remotes.SpecialPerk then Remotes.SpecialPerk:FireServer("Spin", "NarutoClan") end
-            if Flags.RollKekkei and Remotes.SpecialPerk then Remotes.SpecialPerk:FireServer("Spin", "NarutoKekkeiGenkai") end
-            if Flags.RollDomain and Remotes.SpecialPerk then Remotes.SpecialPerk:FireServer("Spin", "JjkDomain") end
-            if Flags.CursedProgression and Remotes.SpecialProgression then Remotes.SpecialProgression:FireServer("UpgradeProgression", "CursedEnergyProgression") end
             
             -- Auto Hatch
             if Flags.AutoHatch and Remotes.Egg and Settings.SelectedEgg then
@@ -15261,24 +15251,37 @@ task.spawn(function()
                 if Flags.BuyGemPot then buy("GemPotion") end
             end
             
-            -- Auto Potions (Throttled 30s)
-            potTick = potTick + 1
-            if potTick % 60 == 0 and Remotes.GetData then
-                 local function checkAndUse(name)
-                     local success, count = pcall(function() return Remotes.GetData:InvokeServer("Item", name) end)
-                     if success and type(count) == "number" and count > 0 then
-                         if Remotes.UseItem then Remotes.UseItem:FireServer(name) end
-                         local inv = RemotesFolder:FindFirstChild("Inventory")
-                         if inv then inv:FireServer("Use", name) end
-                         local pot = RemotesFolder:FindFirstChild("Potion")
-                         if pot then pot:FireServer("Use", name) end
-                     end
-                 end
-                 if Flags.PotStr then checkAndUse("StrengthPotion") end
-                 if Flags.PotDrop then checkAndUse("DropsPotion") end
-                 if Flags.PotLuck then checkAndUse("LuckPotion") end
-                 if Flags.PotGem then checkAndUse("GemPotion") end
+            -- Auto Potions (every 5 seconds)
+            if achTick % 10 == 0 then
+                local function usePotion(name)
+                    if Remotes.UseItem then pcall(function() Remotes.UseItem:FireServer(name) end) end
+                    local inv = RemotesFolder and RemotesFolder:FindFirstChild("Inventory")
+                    if inv then pcall(function() inv:FireServer("Use", name) end) end
+                    local pot = RemotesFolder and RemotesFolder:FindFirstChild("Potion")
+                    if pot then pcall(function() pot:FireServer("Use", name) end) end
+                end
+                if Flags.PotStr then usePotion("StrengthPotion") end
+                if Flags.PotDrop then usePotion("DropsPotion") end
+                if Flags.PotLuck then usePotion("LuckPotion") end
+                if Flags.PotGem then usePotion("GemPotion") end
             end
+        end)
+    end
+end)
+
+-- // FAST GACHA LOOP (0.1s for rapid rolling) //
+task.spawn(function()
+    while task.wait(0.1) do
+        pcall(function()
+            if Flags.RollCrew and Remotes.SpecialPerk then Remotes.SpecialPerk:FireServer("Spin", "OnePieceCrew") end
+            if Flags.RollFruit and Remotes.SpecialPerk then Remotes.SpecialPerk:FireServer("Spin", "OnePieceFruit") end
+            if Flags.RollSaiyan and Remotes.SpecialPerk then Remotes.SpecialPerk:FireServer("Spin", "DbzSaiyan") end
+            if Flags.KiProgression and Remotes.SpecialProgression then Remotes.SpecialProgression:FireServer("UpgradeProgression", "KiProgression") end
+            if Flags.RollTailedBeast and Remotes.SpecialPerk then Remotes.SpecialPerk:FireServer("Spin", "NarutoTailedBeast") end
+            if Flags.RollClan and Remotes.SpecialPerk then Remotes.SpecialPerk:FireServer("Spin", "NarutoClan") end
+            if Flags.RollKekkei and Remotes.SpecialPerk then Remotes.SpecialPerk:FireServer("Spin", "NarutoKekkeiGenkai") end
+            if Flags.RollDomain and Remotes.SpecialPerk then Remotes.SpecialPerk:FireServer("Spin", "JjkDomain") end
+            if Flags.CursedProgression and Remotes.SpecialProgression then Remotes.SpecialProgression:FireServer("UpgradeProgression", "CursedEnergyProgression") end
         end)
     end
 end)
