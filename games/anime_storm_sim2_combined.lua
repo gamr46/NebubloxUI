@@ -14964,9 +14964,9 @@ FarmSec:Toggle({
     Callback = function(v) 
         Flags.Farm = v 
         if v then
-            if Remotes.AttackRange then
-                pcall(function() Remotes.AttackRange:FireServer("Enable") end)
-            end
+            -- if Remotes.AttackRange then
+            --     pcall(function() Remotes.AttackRange:FireServer("Enable") end)
+            -- end
             EnableAutoClicker()
         end
     end 
@@ -15001,7 +15001,7 @@ local HatchSec = EggsTab:Section({ Title = "Auto Hatch", Opened = true })
 
 HatchSec:Dropdown({
     Title = "Select Egg",
-    Default = "Egg1",
+    Default = "OnePieceEgg", -- Must match an option
     Options = {"OnePieceEgg", "DbzEgg", "NarutoEgg", "JjkEgg", "OnePieceGoldenEgg", "DbzGoldenEgg", "NarutoGoldenEgg", "JjkGoldenEgg", "RareEgg", "LegendaryEgg", "MythicEgg"},
     Callback = function(v) Settings.SelectedEgg = v end
 })
@@ -15338,29 +15338,38 @@ task.spawn(function()
             -- Auto Potions (every 5 seconds)
             if achTick % 10 == 0 then
                 local function usePotion(name)
-                    -- Try multiple remote names
-                    local remoteNames = {"UseItem", "Potion", "Potions", "Inventory", "Boost", "Consumable", "Item", "Items"}
-                    local actions = {"Use", "Drink", "Consume", "Activate", name}
+                    -- Direct path check found by user
+                    local rs = game:GetService("ReplicatedStorage")
+                    local remotes = rs:FindFirstChild("Remotes")
                     
-                    for _, remoteName in ipairs(remoteNames) do
-                        local remote = RemotesFolder and RemotesFolder:FindFirstChild(remoteName)
-                        if remote then
-                            for _, action in ipairs(actions) do
-                                pcall(function() remote:FireServer(action, name) end)
-                                pcall(function() remote:FireServer(name) end)
-                            end
-                        end
+                    -- Try UseItem in Remotes folder (Most likely)
+                    if remotes then
+                        local useItem = remotes:FindFirstChild("UseItem")
+                        if useItem then pcall(function() useItem:FireServer(name) end) end
+                        
+                        -- Try Inventory/Potion just in case
+                        local inv = remotes:FindFirstChild("Inventory")
+                        if inv then pcall(function() inv:FireServer("Use", name) end) end
                     end
                     
-                    -- Also try Remotes table entries
+                    -- Also try firing global Remotes table if setup
                     if Remotes.UseItem then pcall(function() Remotes.UseItem:FireServer(name) end) end
-                    if Remotes.Potion then pcall(function() Remotes.Potion:FireServer("Use", name) end) end
-                    if Remotes.Inventory then pcall(function() Remotes.Inventory:FireServer("Use", name) end) end
                 end
-                if Flags.PotStr then usePotion("StrengthPotion"); usePotion("Strength") end
-                if Flags.PotDrop then usePotion("DropsPotion"); usePotion("Drops") end
-                if Flags.PotLuck then usePotion("LuckPotion"); usePotion("Luck") end
-                if Flags.PotGem then usePotion("GemPotion"); usePotion("Gem") end
+                
+                if Flags.PotStr then usePotion("StrengthPotion") end
+                if Flags.PotDrop then usePotion("DropsPotion") end
+                if Flags.PotLuck then usePotion("LuckPotion") end
+                if Flags.PotGem then usePotion("GemPotion") end
+                
+                -- Auto Boss Rush Trigger (Periodically try to start if enabled)
+                if Flags.BossRush and Remotes.BossRushRemote then
+                    pcall(function() Remotes.BossRushRemote:FireServer("OpenBossRushFrame", "DbzBossRush") end)
+                    pcall(function() Remotes.BossRushRemote:FireServer("StartUi", "DbzBossRush") end)
+                end
+                if Flags.JjkBossRush and Remotes.BossRushRemote then
+                     pcall(function() Remotes.BossRushRemote:FireServer("OpenBossRushFrame", "JjkBossRush") end)
+                     pcall(function() Remotes.BossRushRemote:FireServer("StartUi", "JjkBossRush") end)
+                end
             end
         end)
     end
