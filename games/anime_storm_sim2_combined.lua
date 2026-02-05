@@ -14791,7 +14791,7 @@ end
 local WorldEnemies = {
     OnePiece = {"Aokiji", "Doflamingo", "Kizaru", "Sengoku", "Akainu"},
     Dbz = {"Raditz", "Frieza", "Cell", "Android18", "Buu"},
-    Naruto = {},  -- Add Naruto enemies here when known
+    Naruto = {"Deidara", "Sasori", "Konan", "Zetsu", "Itachi"},
     Jjk = {}  -- Add JJK enemies here when known
 }
 
