@@ -15016,6 +15016,8 @@ BossRushSec:Toggle({
         end
     end
 })
+
+
 BossRushSec:Toggle({
     Title = "Auto Start JJK Boss Rush",
     Value = Flags.JjkBossRush,
@@ -15051,6 +15053,11 @@ ShopSec:Toggle({ Title = "Auto Buy Gem Potion", Value = Flags.BuyGemPot, Callbac
 local HopSec = MiscTab:Section({ Title = "Server Control", Opened = true })
 HopSec:Toggle({ Title = "Auto Server Hop", Value = Flags.AutoHop, Callback = function(v) Flags.AutoHop = v end })
 HopSec:Button({ Title = "Force Server Hop", Callback = function() ANUI:Notify({Title = "Hopping...", Content = "Searching...", Duration = 3}) Settings.ForceHop = true end })
+HopSec:Button({ Title = "Rejoin Server", Callback = function()
+    local ts = game:GetService("TeleportService")
+    local p = game:GetService("Players").LocalPlayer
+    ts:Teleport(game.PlaceId, p)
+end })
 
 local RewSec = MiscTab:Section({ Title = "Daily Rewards", Opened = true })
 RewSec:Toggle({ Title = "Auto Daily Sign-in", Value = Flags.Daily, Callback = function(v) Flags.Daily = v end })
