@@ -100,21 +100,26 @@ l.SetIconsType"lucide"
 local m
 
 -- Performance: Device detection for mobile optimization
-local userSettingsSuccess, userSettingsObj = pcall(function() return UserSettings() end)
 local function detectDeviceTier()
-	local isMobile = e.TouchEnabled and not e.KeyboardEnabled
-	local graphicsQuality = 10
-	if userSettingsSuccess and userSettingsObj and userSettingsObj.GameSettings then
-		graphicsQuality = userSettingsObj.GameSettings.SavedQualityLevel or 10
-	end
-	
-	if isMobile or graphicsQuality <= 3 then
-		return "Low"
-	elseif graphicsQuality <= 7 then
-		return "Medium"
-	else
-		return "High"
-	end
+	local success, result = pcall(function()
+		local isMobile = e.TouchEnabled and not e.KeyboardEnabled
+		local graphicsQuality = 10
+		pcall(function()
+			local us = UserSettings()
+			if us and us.GameSettings then
+				graphicsQuality = us.GameSettings.SavedQualityLevel or 10
+			end
+		end)
+		
+		if isMobile or graphicsQuality <= 3 then
+			return "Low"
+		elseif graphicsQuality <= 7 then
+			return "Medium"
+		else
+			return "High"
+		end
+	end)
+	return success and result or "Medium"
 end
 
 local p={
