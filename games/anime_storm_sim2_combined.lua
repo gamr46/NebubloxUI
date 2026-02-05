@@ -14791,7 +14791,8 @@ local function GetEnemyFolder()
     local maps = Workspace:FindFirstChild("Maps")
     if maps then
         for _, world in ipairs(maps:GetChildren()) do
-            local enemies = world:FindFirstChild("Enemies") or world:FindFirstChild("Mobs") or world:FindFirstChild("NPCs")
+            -- Only look for Enemies/Mobs folders, NOT NPCs
+            local enemies = world:FindFirstChild("Enemies") or world:FindFirstChild("Mobs")
             if enemies then return enemies end
         end
     end
@@ -14801,9 +14802,9 @@ local function GetEnemyFolder()
         return parent:FindFirstChild(name) or parent:FindFirstChild(name:lower()) or parent:FindFirstChild(name:upper())
     end
     
+    -- Prioritize Enemies folders, avoid NPCs
     local possiblePaths = {
         get(Workspace, "Enemies"),
-        get(Workspace, "NPCs"),
         get(Workspace, "Mobs"),
         get(get(Workspace, "World"), "Enemies")
     }
@@ -14814,6 +14815,13 @@ local function GetEnemyFolder()
     
     return nil
 end
+
+-- Blacklist for NPC/non-enemy names
+local NPCBlacklist = {
+    "Shop", "Merchant", "Vendor", "NPC", "Quest", "Guide", "Trainer", 
+    "Blacksmith", "Seller", "Keeper", "Master", "Teacher", "Elder",
+    "Sensei", "Captain", "Admiral", "King", "Queen", "Princess", "Prince"
+}
 
 local function GetNearbyEnemyNames()
     local names = {}
@@ -14844,7 +14852,16 @@ local function GetNearbyEnemyNames()
             
             if hum and root and hum.Health > 0 and not Players:GetPlayerFromCharacter(mob) then
                 if (root.Position - myRoot.Position).Magnitude < Settings.DropdownRadius then
-                    if not seen[mob.Name] then
+                    -- Check if name contains blacklisted NPC terms
+                    local isNPC = false
+                    for _, npcTerm in ipairs(NPCBlacklist) do
+                        if string.find(mob.Name:lower(), npcTerm:lower()) then
+                            isNPC = true
+                            break
+                        end
+                    end
+                    
+                    if not isNPC and not seen[mob.Name] then
                         table.insert(names, mob.Name)
                         seen[mob.Name] = true
                     end
@@ -15259,16 +15276,29 @@ task.spawn(function()
             -- Auto Potions (every 5 seconds)
             if achTick % 10 == 0 then
                 local function usePotion(name)
+                    -- Try multiple remote names
+                    local remoteNames = {"UseItem", "Potion", "Potions", "Inventory", "Boost", "Consumable", "Item", "Items"}
+                    local actions = {"Use", "Drink", "Consume", "Activate", name}
+                    
+                    for _, remoteName in ipairs(remoteNames) do
+                        local remote = RemotesFolder and RemotesFolder:FindFirstChild(remoteName)
+                        if remote then
+                            for _, action in ipairs(actions) do
+                                pcall(function() remote:FireServer(action, name) end)
+                                pcall(function() remote:FireServer(name) end)
+                            end
+                        end
+                    end
+                    
+                    -- Also try Remotes table entries
                     if Remotes.UseItem then pcall(function() Remotes.UseItem:FireServer(name) end) end
-                    local inv = RemotesFolder and RemotesFolder:FindFirstChild("Inventory")
-                    if inv then pcall(function() inv:FireServer("Use", name) end) end
-                    local pot = RemotesFolder and RemotesFolder:FindFirstChild("Potion")
-                    if pot then pcall(function() pot:FireServer("Use", name) end) end
+                    if Remotes.Potion then pcall(function() Remotes.Potion:FireServer("Use", name) end) end
+                    if Remotes.Inventory then pcall(function() Remotes.Inventory:FireServer("Use", name) end) end
                 end
-                if Flags.PotStr then usePotion("StrengthPotion") end
-                if Flags.PotDrop then usePotion("DropsPotion") end
-                if Flags.PotLuck then usePotion("LuckPotion") end
-                if Flags.PotGem then usePotion("GemPotion") end
+                if Flags.PotStr then usePotion("StrengthPotion"); usePotion("Strength") end
+                if Flags.PotDrop then usePotion("DropsPotion"); usePotion("Drops") end
+                if Flags.PotLuck then usePotion("LuckPotion"); usePotion("Luck") end
+                if Flags.PotGem then usePotion("GemPotion"); usePotion("Gem") end
             end
         end)
     end
