@@ -5,7 +5,7 @@ local ANUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/ANHub-Sc
 
 -- // GLOBAL CONFIG //
 local ScriptTitle = "Nebublox"
-local ScriptIcon = "rbxassetid://121698194718505" -- Replace with your uploaded Asset ID (e.g. "rbxassetid://123456789")
+local ScriptIcon = "rbxassetid://127700356483621" -- Wizard Potato Icon
 -- To use your custom image:
 -- 1. Upload it to Roblox Decals/Images
 -- 2. Copy the Asset ID from the URL (number)
