@@ -86,7 +86,6 @@ InfoSection:Button({
 local FarmTab = Window:Tab({ Title = "Farming", Icon = "swords", SidebarProfile = false })
 local MainFarm = FarmTab:Section({ Title = "Smart Farm", Icon = "zap", Opened = true })
 
--- Moved Auto Capture Here (Above Enemy Priority)
 MainFarm:Toggle({
     Title = "Auto Capture (E)",
     Desc = "Spams Capture Interaction",
@@ -123,7 +122,6 @@ MainFarm:Button({
             end
         end
 
-        -- 1. Scan Islands (workspace.common.Up)
         if workspace:FindFirstChild("common") and workspace.common:FindFirstChild("Up") then
             for _, island in ipairs(workspace.common.Up:GetChildren()) do 
                  local npcFolder = island:FindFirstChild("NPC")
@@ -135,14 +133,12 @@ MainFarm:Button({
             end
         end
         
-        -- 2. Scan World Boss (workspace.enemy)
         if workspace:FindFirstChild("enemy") then
              for _, mob in ipairs(workspace.enemy:GetDescendants()) do
                 AddEnemy(mob, "alert-circle")
             end
         end
         
-        -- 3. FALLBACK: Global Workspace Scan
         if #validEnemies == 0 then
              for _, mob in ipairs(workspace:GetChildren()) do
                  if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and not Players:GetPlayerFromCharacter(mob) then
@@ -154,8 +150,17 @@ MainFarm:Button({
         end
         
         table.sort(validEnemies, function(a, b) return a.Title < b.Title end)
-        if CaptureDropdown and CaptureDropdown.SetValues then CaptureDropdown:SetValues(validEnemies) end
-        ANUI:Notify({Title = "Farming", Content = "Found " .. #validEnemies .. " enemies!", Icon = "refresh-cw", Duration = 2})
+        
+        -- CONVERT TO SIMPLE STRINGS for Dropdown compatibility
+        local stringList = {}
+        for _, enemy in ipairs(validEnemies) do
+            table.insert(stringList, enemy.Title)
+        end
+        
+        if CaptureDropdown and CaptureDropdown.SetValues then 
+            CaptureDropdown:SetValues(stringList)
+        end
+        ANUI:Notify({Title = "Farming", Content = "Found " .. #stringList .. " enemies!", Icon = "refresh-cw", Duration = 2})
     end
 })
 
@@ -174,6 +179,20 @@ local GachaSection = GachaTab:Section({ Title = "Auto Roll", Icon = "dices", Ope
 local GachaNames = {
     ["201"] = "Shock Fruit",
     ["202"] = "Flame Fruit",
+    ["203"] = "Sharingan",
+    ["204"] = "Tessen",
+    ["205"] = "Nichirin Earring",
+    ["206"] = "Swordsmith Mask",
+    ["207"] = "Impression Ring",
+    ["208"] = "Prison Realm", 
+    ["209"] = "One Punch",
+    ["210"] = "Monster Cell",
+    ["212"] = "Machine 212", -- Unknown?
+    ["213"] = "Machine 213", -- Unknown?
+    ["221"] = "Scouter",
+    ["222"] = "Dragon Radar",
+    ["223"] = "Speed Mark",
+    ["224"] = "Life Mark",
     ["601"] = "Event Star",
 }
 
@@ -187,16 +206,19 @@ if workspace:FindFirstChild("common") and workspace.common:FindFirstChild("Other
     end
 end
 
--- Generate Dropdown Values
+-- Generate Dropdown Values (Clean Names only)
 local GachaList = {}
-local KnownIDs = {
+-- We want to iterate in a stable order
+local OrderedIDs = {
     "201", "202", "203", "204", "205", "206", "207", 
-    "208", "209", "210", "212", "213", "221", "222", "223", "224", "601"
+    "208", "209", "210", "212", "213", "221", "222", "223", "224"
+    -- Removed 601 (Event Star) as it has its own tab
 }
 
-for _, id in ipairs(KnownIDs) do
+for _, id in ipairs(OrderedIDs) do
     local name = GachaNames[id] or ("Machine " .. id)
-    table.insert(GachaList, {Title = name .. " (" .. id .. ")", Val = id})
+    -- CLEAN NAME: "Shock Fruit" (User asked to remove numbers)
+    table.insert(GachaList, {Title = name, Val = id})
 end
 
 GachaSection:Dropdown({
@@ -211,9 +233,6 @@ GachaSection:Dropdown({
                  if type(k) == "number" then selected = v 
                  else selected = k end
             end
-        end
-        if selected and string.find(selected, "%(") then
-             selected = string.match(selected, "%((%d+)%)")
         end
         Flags.SelectedGachaId = selected
         print("Selected Gacha ID:", Flags.SelectedGachaId)
@@ -230,7 +249,6 @@ GachaSection:Toggle({
 
 local EventSection = GachaTab:Section({ Title = "Events", Icon = "star", Opened = true })
 
--- Renamed & Reordered Star Events
 EventSection:Toggle({
     Title = "Auto Collect Star(s)",
     Desc = "Claims Online Time Rewards (1-12)",
@@ -248,8 +266,6 @@ EventSection:Toggle({
 -- [TAB 4: AUTOMATION]
 local AutoTab = Window:Tab({ Title = "Automation", Icon = "cpu", SidebarProfile = false })
 local MiscSection = AutoTab:Section({ Title = "Misc", Icon = "settings", Opened = true })
-
--- Removed Auto Capture from here (Moved to MainFarm)
 
 MiscSection:Toggle({
     Title = "Auto Equip Best",
@@ -286,8 +302,6 @@ MiscSection:Toggle({
     Callback = function(state) Flags.AutoSpin = state end
 })
 
--- Removed AutoEventCollect from here (Moved to Events tab)
-
 MiscSection:Toggle({
     Title = "Auto Charge (Podiums)",
     Desc = "Teleports to & uses Charge Podiums",
@@ -322,23 +336,17 @@ for _, island in ipairs(Islands) do
         Callback = function()
             local char = player.Character
             local root = char and char:FindFirstChild("HumanoidRootPart")
-            if root and workspace:FindFirstChild("common") and workspace.common:FindFirstChild("Up") then
-                local dest = workspace.common.Up:FindFirstChild(island.Id)
-                local targetCFrame = nil
+            if root and workspace:FindFirstChild("building") and workspace.building:FindFirstChild("SceneChange") then
+                -- UPDATED TELEPORT LOGIC: workspace.building.SceneChange.SpawnLocation[i]
+                -- Assuming format SpawnLocation1, SpawnLocation2 etc.
+                local spawnName = "SpawnLocation" .. island.Id
+                local spawner = workspace.building.SceneChange:FindFirstChild(spawnName)
                 
-                if dest then
-                    if dest:IsA("Model") or dest:IsA("BasePart") then
-                        targetCFrame = dest:GetPivot()
-                    else
-                        local part = dest:FindFirstChildWhichIsA("BasePart", true)
-                        if part then targetCFrame = part.CFrame end
-                    end
-                end
-                
-                if targetCFrame then
-                    root.CFrame = targetCFrame + Vector3.new(0, 5, 0)
+                if spawner then
+                    root.CFrame = spawner.CFrame + Vector3.new(0, 5, 0)
                     ANUI:Notify({Title = "Teleport", Content = "Warped to " .. island.Name, Icon = "map-pin", Duration = 2})
                 else
+                     -- Portal Fallback
                      local pIdx = tonumber(island.Id) - 1
                      pcall(function() ReplicatedStorage.Events.Map.PortalEvent:FireServer(pIdx) end)
                      ANUI:Notify({Title = "Teleport", Content = "Used portal for " .. island.Name, Icon = "map-pin", Duration = 2})
@@ -379,7 +387,6 @@ local function GetSmartTarget()
         end
     end
 
-    -- 1. Scan Islands (workspace.common.Up)
     if workspace:FindFirstChild("common") and workspace.common:FindFirstChild("Up") then
         for _, island in ipairs(workspace.common.Up:GetChildren()) do
              local folder = island:FindFirstChild("NPC")
@@ -387,7 +394,6 @@ local function GetSmartTarget()
         end
     end
     
-    -- 2. Scan World Boss
     if workspace:FindFirstChild("enemy") then ScanFolder(workspace.enemy) end
     
     return bestTarget
@@ -428,7 +434,6 @@ end)
 -- GACHA & SPIN LOGIC
 task.spawn(function()
     while task.wait(0.5) do
-        -- AUTO SPIN (Collect + Spin)
         if Flags.AutoSpin then
             pcall(function()
                  local TT = ReplicatedStorage.Events.Turntable
@@ -437,14 +442,12 @@ task.spawn(function()
             end)
         end
 
-        -- AUTO GACHA (General)
         if Flags.AutoRollSelected and Flags.SelectedGachaId then
             pcall(function()
                 ReplicatedStorage.Events.NewLotto.RollOne:FireServer(true, tonumber(Flags.SelectedGachaId))
             end)
         end
         
-        -- AUTO EVENT GACHA (Specific)
         if Flags.AutoEventGacha then
             pcall(function()
                 ReplicatedStorage.Events.NewLotto.RollOne:FireServer(true, 601)
@@ -478,21 +481,34 @@ task.spawn(function()
             pcall(function() for i=1,12 do ReplicatedStorage.Events.Activity.Mix.OnlineTime.GetEvent:FireServer(3, i) end end)
         end
 
-        -- Auto Charge (Podiums)
+        -- AUTO CHARGE LOOP UPDATED
+        -- Path: workspace.common.Up[i].NPC.Model.Part
         if Flags.AutoCharge then
             pcall(function()
                 if workspace:FindFirstChild("common") and workspace.common:FindFirstChild("Up") then
-                    for _, island in ipairs(workspace.common.Up:GetChildren()) do
-                        for _, child in ipairs(island:GetDescendants()) do
-                            if string.find(string.lower(child.Name), "charge") or string.find(string.lower(child.Name), "podium") then
-                                if child:FindFirstChild("ClickDetector") then
-                                    fireclickdetector(child.ClickDetector)
-                                    print("Clicked charge:", child:GetFullName())
-                                elseif child:IsA("ProximityPrompt") then
-                                    fireproximityprompt(child)
-                                    print("Prompted charge:", child:GetFullName())
-                                end
+                    for i = 1, 7 do
+                        local island = workspace.common.Up:FindFirstChild(tostring(i))
+                        local npcFolder = island and island:FindFirstChild("NPC")
+                        local model = npcFolder and npcFolder:FindFirstChild("Model")
+                        local part = model and model:FindFirstChild("Part")
+                        
+                        if part then
+                            -- 1. Teleport to it
+                            local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                            if myRoot then
+                                myRoot.CFrame = part.CFrame + Vector3.new(0, 3, 0)
                             end
+                            
+                            -- 2. Interact (Click/Prompt)
+                            if part:FindFirstChild("ClickDetector") then
+                                fireclickdetector(part.ClickDetector)
+                            elseif part:FindFirstChildWhichIsA("ProximityPrompt") then
+                                fireproximityprompt(part:FindFirstChildWhichIsA("ProximityPrompt"))
+                            end
+                            
+                            -- 3. TouchInterest Check (Old school)
+                            firetouchinterest(myRoot, part, 0)
+                            firetouchinterest(myRoot, part, 1)
                         end
                     end
                 end
