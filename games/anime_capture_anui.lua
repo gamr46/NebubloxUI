@@ -4,6 +4,7 @@
 local ANUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/ANHub-Script/ANUI/refs/heads/main/dist/main.lua"))()
 
 local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -272,13 +273,24 @@ for _, island in ipairs(Islands) do
             local root = char and char:FindFirstChild("HumanoidRootPart")
             if root and workspace:FindFirstChild("common") and workspace.common:FindFirstChild("Up") then
                 local dest = workspace.common.Up:FindFirstChild(island.Id)
+                local targetCFrame = nil
+                
                 if dest then
-                    -- Teleport to the first part found in the island folder (or center)
-                    local targetInfo = dest:IsA("Model") and dest:GetModelCFrame() or CFrame.new(dest:GetPivot().Position)
-                    root.CFrame = targetInfo + Vector3.new(0, 5, 0)
+                    -- Safety check: Determine if it's a Model/Part or Folder
+                    if dest:IsA("Model") or dest:IsA("BasePart") then
+                        targetCFrame = dest:GetPivot()
+                    else
+                        -- It's a Folder (likely), find first part
+                        local part = dest:FindFirstChildWhichIsA("BasePart", true)
+                        if part then targetCFrame = part.CFrame end
+                    end
+                end
+                
+                if targetCFrame then
+                    root.CFrame = targetCFrame + Vector3.new(0, 5, 0)
                     ANUI:Notify({Title = "Teleport", Content = "Warped to " .. island.Name, Icon = "map-pin", Duration = 2})
                 else
-                     -- Portal Fallback (0-Index based usually)
+                     -- Portal Fallback (0-Index based)
                      local pIdx = tonumber(island.Id) - 1
                      pcall(function() ReplicatedStorage.Events.Map.PortalEvent:FireServer(pIdx) end)
                      ANUI:Notify({Title = "Teleport", Content = "Used portal for " .. island.Name, Icon = "map-pin", Duration = 2})
@@ -298,39 +310,9 @@ local function GetSmartTarget()
     local bestTarget = nil
     local shortestDist = 999999
     
-    -- 1. Scan Islands
-    if workspace:FindFirstChild("common") and workspace.common:FindFirstChild("Up") then
-        for i = 1, 7 do
-            local island = workspace.common.Up:FindFirstChild(tostring(i))
-            if island then
-                local folder = island:FindFirstChild("NPC")
-                if folder then
-                    for _, mob in ipairs(folder:GetDescendants()) do
-                        if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") and mob.Humanoid.Health > 0 then
-                            -- Filter
-                            local isSelected = true
-                            if next(Flags.SelectedMobs) ~= nil then
-                                if not Flags.SelectedMobs[mob.Name] then isSelected = false end
-                            end
-            
-                            if isSelected then
-                                local dist = (mob.HumanoidRootPart.Position - myRoot.Position).Magnitude
-                                if dist < shortestDist then
-                                    shortestDist = dist
-                                    bestTarget = mob
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    -- 2. Scan World Boss
-    if workspace:FindFirstChild("enemy") and workspace.enemy:FindFirstChild("worldboss") then 
-        local folder = workspace.enemy.worldboss
-         for _, mob in ipairs(folder:GetDescendants()) do
+    local function ScanFolder(folder)
+        if not folder then return end
+        for _, mob in ipairs(folder:GetDescendants()) do
             if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") and mob.Humanoid.Health > 0 then
                 -- Filter
                 local isSelected = true
@@ -348,6 +330,17 @@ local function GetSmartTarget()
             end
         end
     end
+
+    -- 1. Scan Islands
+    if workspace:FindFirstChild("common") and workspace.common:FindFirstChild("Up") then
+        for i = 1, 7 do
+            local island = workspace.common.Up:FindFirstChild(tostring(i))
+            if island then ScanFolder(island:FindFirstChild("NPC")) end
+        end
+    end
+    
+    -- 2. Scan World Boss
+    if workspace:FindFirstChild("enemy") then ScanFolder(workspace.enemy:FindFirstChild("worldboss")) end
     
     return bestTarget
 end
@@ -409,9 +402,6 @@ task.spawn(function()
         if Flags.AutoEventGacha then
             pcall(function()
                 ReplicatedStorage.Events.NewLotto.RollOne:FireServer({16, 601, 1})
-                -- Also collect event rewards as user requested "Collect & Spin"
-                -- assuming AutoEventCollect handles the "Collect" part, or we can add it here if needed
-                -- But sticking to Gacha Roll as primary action here
             end)
         end
     end
