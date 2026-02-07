@@ -3,6 +3,29 @@
 
 local ANUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/ANHub-Script/ANUI/refs/heads/main/dist/main.lua"))()
 
+-- // GLOBAL CONFIG //
+local ScriptTitle = "Nebublox"
+local ScriptIcon = "rbxassetid://121698194718505" -- Replace with your uploaded Asset ID (e.g. "rbxassetid://123456789")
+-- To use your custom image:
+-- 1. Upload it to Roblox Decals/Images
+-- 2. Copy the Asset ID from the URL (number)
+-- 3. Paste it above
+
+-- // CLOSE OLD INSTANCE //
+if _G.NebubloxCapture then
+    if _G.NebubloxCapture.Window then
+        pcall(function() _G.NebubloxCapture.Window:Destroy() end)
+        print("Closed previous Nebublox instance.")
+    end
+    -- Fallback cleanup
+    local core = game:GetService("CoreGui")
+    local pg = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+    if core:FindFirstChild(ScriptTitle) then core[ScriptTitle]:Destroy() end
+    if pg:FindFirstChild(ScriptTitle) then pg[ScriptTitle]:Destroy() end
+    if core:FindFirstChild("NebubloxCapture") then core.NebubloxCapture:Destroy() end
+    if pg:FindFirstChild("NebubloxCapture") then pg.NebubloxCapture:Destroy() end
+end
+
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -35,10 +58,10 @@ local function MakeProfile(config) return config end
 
 -- // 2. WINDOW CREATION //
 local Window = ANUI:CreateWindow({
-    Title = "Nebublox", 
+    Title = ScriptTitle, 
     Author = "by He Who Remains Lil'Nug",
     Folder = "NebubloxCapture",
-    Icon = "rbxassetid://121698194718505",
+    Icon = ScriptIcon,
     IconSize = 44,
     Theme = "Dark", 
     Transparent = false,
@@ -550,3 +573,27 @@ task.spawn(function()
 end)
 
 ANUI:Notify({Title = "Nebublox", Content = "Anime Capture Loaded!", Icon = "check", Duration = 5})
+
+-- Store Instance for Cleanup
+_G.NebubloxCapture = { Window = Window }
+
+-- // POST-INIT: UI CUSTOMIZATION //
+task.spawn(function()
+    task.wait(1) -- Wait for UI animation
+    local gui = game:GetService("CoreGui"):FindFirstChild(ScriptTitle) or game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild(ScriptTitle) or game:GetService("CoreGui"):FindFirstChild("NebubloxCapture")
+    
+    if gui then
+        -- 1. Force Square Avatar
+        for _, v in ipairs(gui:GetDescendants()) do
+            if v:IsA("ImageLabel") and (v.Name == "Avatar" or v.Name == "Icon") then
+                -- Check if it's likely the profile avatar (usually larger)
+                if v.Size.X.Offset > 30 then 
+                    local corner = v:FindFirstChildOfClass("UICorner")
+                    if corner then 
+                        corner.CornerRadius = UDim.new(0, 0) -- Make Square
+                    end
+                end
+            end
+        end
+    end
+end)
