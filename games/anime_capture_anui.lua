@@ -99,44 +99,58 @@ local CaptureDropdown = MainFarm:Dropdown({
 })
 
 MainFarm:Button({
-    Title = "Refresh Enemies",
+    Title = "Refresh Enemies (Aggressive)",
     Callback = function()
         local validEnemies = {}
         local seen = {}
         
-        -- SCANNING LOGIC UPDATED
-        -- 1. Map Islands: workspace.common.Up[i].NPC
-        if workspace:FindFirstChild("common") and workspace.common:FindFirstChild("Up") then
-            for i = 1, 7 do
-                local island = workspace.common.Up:FindFirstChild(tostring(i))
-                local npcFolder = island and island:FindFirstChild("NPC")
-                if npcFolder then
-                    for _, mob in ipairs(npcFolder:GetDescendants()) do
-                        if mob:IsA("Model") and mob:FindFirstChild("Humanoid") then
-                            if not seen[mob.Name] then
-                                table.insert(validEnemies, {Title = mob.Name, Icon = "swords"})
-                                seen[mob.Name] = true
-                            end
-                        end
-                    end
+        local function AddEnemy(mob, icon)
+            if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
+                 -- Avoid players
+                if Players:GetPlayerFromCharacter(mob) then return end
+                
+                if not seen[mob.Name] then
+                    table.insert(validEnemies, {Title = mob.Name, Val = mob.Name, Icon = icon or "swords"})
+                    seen[mob.Name] = true
                 end
             end
         end
-        
-        -- 2. World Boss: workspace.enemy.worldboss
-        if workspace:FindFirstChild("enemy") and workspace.enemy:FindFirstChild("worldboss") then
-             for _, mob in ipairs(workspace.enemy.worldboss:GetDescendants()) do
-                if mob:IsA("Model") and mob:FindFirstChild("Humanoid") then
-                    if not seen[mob.Name] then
-                        table.insert(validEnemies, {Title = mob.Name, Icon = "alert-circle"}) -- Diff icon for boss
-                        seen[mob.Name] = true
+
+        -- 1. Scan Islands (workspace.common.Up)
+        if workspace:FindFirstChild("common") and workspace.common:FindFirstChild("Up") then
+            for _, island in ipairs(workspace.common.Up:GetChildren()) do -- Iterate ALL islands
+                 local npcFolder = island:FindFirstChild("NPC")
+                 if npcFolder then
+                    for _, mob in ipairs(npcFolder:GetChildren()) do -- Check direct children first
+                        AddEnemy(mob, "swords")
                     end
-                end
+                 end
             end
+        end
+        
+        -- 2. Scan World Boss (workspace.enemy)
+        if workspace:FindFirstChild("enemy") then
+             for _, mob in ipairs(workspace.enemy:GetDescendants()) do
+                AddEnemy(mob, "alert-circle")
+            end
+        end
+        
+        -- 3. FALLBACK: Global Workspace Scan (if nothing found)
+        if #validEnemies == 0 then
+             for _, mob in ipairs(workspace:GetChildren()) do
+                 if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and not Players:GetPlayerFromCharacter(mob) then
+                     if mob.Name ~= "StarterCharacter" then -- Filter generic
+                         AddEnemy(mob, "help-circle")
+                     end
+                 end
+             end
         end
         
         table.sort(validEnemies, function(a, b) return a.Title < b.Title end)
-        if CaptureDropdown and CaptureDropdown.SetValues then CaptureDropdown:SetValues(validEnemies) end
+        
+        if CaptureDropdown and CaptureDropdown.SetValues then 
+            CaptureDropdown:SetValues(validEnemies) 
+        end
         ANUI:Notify({Title = "Farming", Content = "Found " .. #validEnemies .. " enemies!", Icon = "refresh-cw", Duration = 2})
     end
 })
@@ -155,8 +169,8 @@ local GachaSection = GachaTab:Section({ Title = "Auto Roll", Icon = "dices", Ope
 -- Gacha ID-to-Name Mapping
 local GachaNames = {
     ["201"] = "Shock Fruit",
+    ["202"] = "Flame Fruit",
     ["601"] = "Event Star",
-    -- Add more as known: ["202"] = "Flame Fruit", etc.
 }
 
 -- Auto-Detect Names from Workspace
@@ -164,8 +178,6 @@ if workspace:FindFirstChild("common") and workspace.common:FindFirstChild("Other
     for _, lotto in ipairs(workspace.common.OtherLotto:GetChildren()) do
         local id = lotto.Name
         if not GachaNames[id] then
-            -- Try to find a readable name inside the model (e.g. SurfaceGui or Part Name)
-            -- For now, default to "Machine [ID]"
             GachaNames[id] = "Machine " .. id
         end
     end
@@ -173,7 +185,6 @@ end
 
 -- Generate Dropdown Values
 local GachaList = {}
--- Ensure known IDs are in the list
 local KnownIDs = {
     "201", "202", "203", "204", "205", "206", "207", 
     "208", "209", "210", "212", "213", "221", "222", "223", "224", "601"
@@ -190,19 +201,21 @@ GachaSection:Dropdown({
     Required = true,
     Values = GachaList,
     Callback = function(val) 
-        -- Dropdown returns the Value property if set, or we handle table
-        for k, v in pairs(val) do
-            -- If using simple values:
-            if type(k) == "number" then Flags.SelectedGachaId = v 
-            else Flags.SelectedGachaId = k end -- ANUI sometimes returns Key=Bool
+        -- Helper to handle multiple return types from ANUI
+        local selected = val
+        if type(val) == "table" then
+            for k, v in pairs(val) do 
+                 if type(k) == "number" then selected = v 
+                 else selected = k end
+            end
         end
-        -- Fallback for single value return
-        if type(val) == "string" then Flags.SelectedGachaId = val end
         
-        -- Extract ID if value is "Name (ID)" format (just in case)
-        if Flags.SelectedGachaId and string.find(Flags.SelectedGachaId, "%(") then
-            Flags.SelectedGachaId = string.match(Flags.SelectedGachaId, "%((%d+)%)")
+        -- Extract ID if mixed with Name
+        if selected and string.find(selected, "%(") then
+             selected = string.match(selected, "%((%d+)%)")
         end
+        Flags.SelectedGachaId = selected
+        print("Selected Gacha ID:", Flags.SelectedGachaId)
     end
 })
 
@@ -351,6 +364,7 @@ local function GetSmartTarget()
                 -- Filter
                 local isSelected = true
                 if next(Flags.SelectedMobs) ~= nil then
+                    -- Flags.SelectedMobs is table [Name] = true
                     if not Flags.SelectedMobs[mob.Name] then isSelected = false end
                 end
 
@@ -365,16 +379,16 @@ local function GetSmartTarget()
         end
     end
 
-    -- 1. Scan Islands
+    -- 1. Scan Islands (workspace.common.Up)
     if workspace:FindFirstChild("common") and workspace.common:FindFirstChild("Up") then
-        for i = 1, 7 do
-            local island = workspace.common.Up:FindFirstChild(tostring(i))
-            if island then ScanFolder(island:FindFirstChild("NPC")) end
+        for _, island in ipairs(workspace.common.Up:GetChildren()) do
+             local folder = island:FindFirstChild("NPC")
+             if folder then ScanFolder(folder) end
         end
     end
     
     -- 2. Scan World Boss
-    if workspace:FindFirstChild("enemy") then ScanFolder(workspace.enemy:FindFirstChild("worldboss")) end
+    if workspace:FindFirstChild("enemy") then ScanFolder(workspace.enemy) end
     
     return bestTarget
 end
@@ -418,9 +432,7 @@ task.spawn(function()
         if Flags.AutoSpin then
             pcall(function()
                  local TT = ReplicatedStorage.Events.Turntable
-                 -- Claim all 7 slots first
                  for i = 1, 7 do TT.ChangeData:FireServer(i, "Claimed") end
-                 -- Then Spin
                  TT:FindFirstChild("[C-S]GetRandom"):InvokeServer()
             end)
         end
@@ -428,14 +440,16 @@ task.spawn(function()
         -- AUTO GACHA (General)
         if Flags.AutoRollSelected and Flags.SelectedGachaId then
             pcall(function()
-                ReplicatedStorage.Events.NewLotto.RollOne:FireServer({16, tonumber(Flags.SelectedGachaId), 1})
+                -- CORRECTED: FireServer(True, ID)
+                ReplicatedStorage.Events.NewLotto.RollOne:FireServer(true, tonumber(Flags.SelectedGachaId))
             end)
         end
         
         -- AUTO EVENT GACHA (Specific)
         if Flags.AutoEventGacha then
             pcall(function()
-                ReplicatedStorage.Events.NewLotto.RollOne:FireServer({16, 601, 1})
+                -- CORRECTED: FireServer(True, 601)
+                ReplicatedStorage.Events.NewLotto.RollOne:FireServer(true, 601)
             end)
         end
     end
