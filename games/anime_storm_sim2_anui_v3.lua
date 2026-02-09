@@ -333,23 +333,15 @@ task.spawn(function()
 end)
 
 local AboutSection = MainTab:Section({ Title = "Welcome!", Icon = "smile", Opened = true })
-AboutSection:Paragraph({
-    Title = "Thank You!",
-    Content = [[Thank you for using my script, I hope you enjoy!
 
-Do you have any feedback or have ideas? 
-Join our Discord server.
+AboutSection:Paragraph({
+    Title = "Join the community",
+    Content = [[Join our Discord server.
 
 Drop your concepts in #dark-visions
-Request a #forbidden-script]]
-})
+Request a #forbidden-script
 
-AboutSection:Button({
-    Title = "Copy Discord Link",
-    Callback = function()
-        setclipboard("https://discord.gg/nebublox")
-        ANUI:Notify({Title = "Discord", Content = "Link copied to clipboard!", Icon = "copy", Duration = 3})
-    end
+https://discord.gg/nebublox]]
 })
 
 -- [TAB 2: FARM (SMART FARM)]
@@ -366,154 +358,7 @@ FarmSection:Toggle({
     end
 })
 
--- [CUSTOM ENEMY SELECTOR UI]
-local function CreateEmbeddedSelector(parent)
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Name = "EnemySelectorFrame"
-    MainFrame.Size = UDim2.new(1, -10, 0, 250)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-    MainFrame.BorderSizePixel = 0
-    MainFrame.Parent = parent
-    
-    local UICorner = Instance.new("UICorner"); UICorner.CornerRadius = UDim.new(0, 8); UICorner.Parent = MainFrame
-    
-    local Header = Instance.new("TextLabel")
-    Header.Size = UDim2.new(1, 0, 0, 35)
-    Header.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-    Header.Text = "  Multi-Target Selector"
-    Header.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Header.TextXAlignment = Enum.TextXAlignment.Left
-    Header.Font = Enum.Font.GothamBold
-    Header.TextSize = 14
-    Header.Parent = MainFrame
-    Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 8)
 
-    local StatusLabel = Instance.new("TextLabel")
-    StatusLabel.Size = UDim2.new(1, -10, 0, 20)
-    StatusLabel.Position = UDim2.new(0, 5, 0, 38)
-    StatusLabel.BackgroundTransparency = 1
-    StatusLabel.Text = "Status: Attack All / Nearest"
-    StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-    StatusLabel.TextSize = 11
-    StatusLabel.Font = Enum.Font.Gotham
-    StatusLabel.Parent = MainFrame
-
-    local ScrollFrame = Instance.new("ScrollingFrame")
-    ScrollFrame.Size = UDim2.new(1, -10, 1, -65)
-    ScrollFrame.Position = UDim2.new(0, 5, 0, 60)
-    ScrollFrame.BackgroundTransparency = 1
-    ScrollFrame.BorderSizePixel = 0
-    ScrollFrame.ScrollBarThickness = 4
-    ScrollFrame.Parent = MainFrame
-    
-    local ListLayout = Instance.new("UIListLayout")
-    ListLayout.SortOrder = Enum.SortOrder.Name
-    ListLayout.Padding = UDim.new(0, 4)
-    ListLayout.Parent = ScrollFrame
-
-    local function UpdateStatus()
-        local count = 0
-        for _ in pairs(SelectedEnemies) do count = count + 1 end
-        if count == 0 then StatusLabel.Text = "Mode: Nearest Enemy (No selection)"
-        else StatusLabel.Text = "Mode: Targeting " .. count .. " selected enemies" end
-    end
-
-    local function RefreshList()
-        for _, c in pairs(ScrollFrame:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
-        
-        local seen = {}
-        local names = {}
-        
-        local folders = {
-            Workspace:FindFirstChild("Npc"),
-            Workspace:FindFirstChild("TrialRoomNpc"),
-            Workspace:FindFirstChild("InvasionNpc")
-        }
-        
-        for _, folder in ipairs(folders) do
-            if folder then
-                for _, obj in ipairs(folder:GetDescendants()) do
-                    if obj:IsA("Humanoid") and obj.Parent then
-                        local mob = obj.Parent
-                        local name = mob.Name
-                        local bb = mob:FindFirstChild("Head") and mob.Head:FindFirstChild("NpcBillboard")
-                        local disp = bb and bb:FindFirstChild("NpcName") and bb.NpcName.Text
-                        if disp and disp ~= "" then name = disp end
-                        
-                        if name ~= "Dummy" and name ~= player.Name and not seen[name] then
-                            seen[name] = true
-                            table.insert(names, name)
-                        end
-                    end
-                end
-            end
-        end
-        
-        table.sort(names)
-        
-        for _, name in ipairs(names) do
-            local btn = Instance.new("TextButton")
-            btn.Name = name
-            btn.Size = UDim2.new(1, -4, 0, 25)
-            btn.BackgroundColor3 = SelectedEnemies[name] and Color3.fromRGB(45, 140, 220) or Color3.fromRGB(45, 45, 50)
-            btn.Text = name
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            btn.Font = Enum.Font.Gotham
-            btn.TextSize = 12
-            btn.Parent = ScrollFrame
-            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-            
-            btn.MouseButton1Click:Connect(function()
-                if SelectedEnemies[name] then
-                    SelectedEnemies[name] = nil
-                    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-                else
-                    SelectedEnemies[name] = true
-                    btn.BackgroundColor3 = Color3.fromRGB(45, 140, 220)
-                end
-                UpdateStatus()
-                getgenv().NebuBlox_CurrentTarget = nil 
-            end)
-        end
-        ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y)
-    end
-    
-    task.spawn(RefreshList)
-    
-    local RefBtn = Instance.new("TextButton")
-    RefBtn.Size = UDim2.new(0, 60, 0, 20)
-    RefBtn.Position = UDim2.new(1, -65, 0, 7)
-    RefBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    RefBtn.Text = "Refresh"
-    RefBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    RefBtn.TextSize = 10
-    RefBtn.Parent = MainFrame
-    Instance.new("UICorner", RefBtn).CornerRadius = UDim.new(0, 4)
-    RefBtn.MouseButton1Click:Connect(RefreshList)
-    
-    return MainFrame
-end
-
-local TargetSection = TeleportTab:Section({ Title = "Target List", Icon = "list", Opened = true })
-local Placeholder = TargetSection:Paragraph({ Title = "Loading UI...", Content = "" })
-task.spawn(function()
-    task.wait(0.5)
-    local function FindAndInject(root)
-        if not root then return end
-        for _, obj in ipairs(root:GetDescendants()) do
-            if obj:IsA("TextLabel") and obj.Text == "Loading UI..." then
-                local paragraph = obj.Parent
-                local section = paragraph and paragraph.Parent
-                if section then
-                    CreateEmbeddedSelector(section)
-                    paragraph:Destroy()
-                    return true
-                end
-            end
-        end
-    end
-    if not FindAndInject(game:GetService("CoreGui")) then FindAndInject(player.PlayerGui) end
-end)
 
 -- [TAB 3: TRIAL]
 local TrialTab = Window:Tab({ Title = "Trial", Icon = "clock" })
@@ -557,29 +402,7 @@ TrialSection:Button({
 TrialSection:Toggle({ Title = "Auto Drop Potion (On Start)", Value = false, Callback = function(s) Flags.AutoDropPotion = s end })
 TrialSection:Toggle({ Title = "Attack ALL (Trial Only)", Value = false, Callback = function(s) Flags.TrialAttackAll = s end })
 
--- [TAB 3: CHAMPIONS]
-local ChampionsTab = Window:Tab({ Title = "Champions", Icon = "egg" })
-local EggSection = ChampionsTab:Section({ Title = "Auto Hatch Champions", Icon = "egg", Opened = true })
-EggSection:Toggle({ Title = "Auto Hatch One Piece", Value = false, Callback = function(s) Flags.HatchOnePiece = s end })
-EggSection:Toggle({ Title = "Auto Hatch Naruto", Value = false, Callback = function(s) Flags.HatchNaruto = s end })
-EggSection:Toggle({ Title = "Auto Hatch JJK", Value = false, Callback = function(s) Flags.HatchJJK = s end })
-EggSection:Toggle({ Title = "Auto Hatch Demon Slayer", Value = false, Callback = function(s) Flags.HatchSlayer = s end })
-EggSection:Toggle({ Title = "Auto Hatch Dragon Ball", Value = false, Callback = function(s) Flags.HatchDBZ = s end })
 
-EggSection:Button({
-    Title = "Disable Egg Animation (Experimental)",
-    Callback = function()
-        local Event = game:GetService("ReplicatedStorage").Remotes.Egg.EggNotification
-        local success, err = pcall(function()
-            for _, Connection in pairs(getconnections(Event.OnClientEvent)) do
-                if hookfunction then
-                     local old; old = hookfunction(Connection.Function, function(...) return end)
-                else Connection:Disable() end
-            end
-        end)
-        if success then ANUI:Notify({Title = "Animations", Content = "Attempted to disable egg UI!", Icon = "check", Duration = 3}) end
-    end
-})
 
 -- [TAB 4: GAMEMODES (SWAPPED LOGIC)]
 local GamemodesTab = Window:Tab({ Title = "Gamemodes", Icon = "swords" })
@@ -590,18 +413,7 @@ BossSection:Toggle({ Title = "Auto World Boss Rush ( Cursed World)", Value = fal
 
 local InvSection = GamemodesTab:Section({ Title = "Invasion", Icon = "shield", Opened = true })
 InvSection:Toggle({ Title = "Auto Invasion (Slayer World)", Value = false, Callback = function(s) Flags.AutoInvasionStart = s end })
-InvSection:Button({
-    Title = "Force Start Invasion (Debug)",
-    Callback = function()
-        local InvStart = Remotes.Invasion and Remotes.Invasion:FindFirstChild("InvasionStart")
-        if InvStart then
-            InvStart:FireServer("StartUi", "DemonSlayerInvasion")
-            ANUI:Notify({Title = "Debug", Content = "Fired StartUi -> DemonSlayerInvasion", Icon = "zap", Duration = 3})
-        else
-            ANUI:Notify({Title = "Error", Content = "Remote Not Found!", Icon = "alert-triangle", Duration = 3})
-        end
-    end
-})
+
 
 -- [TAB 4: GACHA]
 local GachaTab = Window:Tab({ Title = "Gacha", Icon = "gift" })
@@ -793,9 +605,7 @@ local function CountLiveEnemies(folder)
     local count = 0
     if folder then
         for _, v in ipairs(folder:GetDescendants()) do
-            if v:IsA("Humanoid") and v.Health > 0 then
-                count = count + 1
-            end
+            if v:IsA("Humanoid") and v.Health > 0 then count = count + 1 end
         end
     end
     return count
@@ -805,19 +615,6 @@ local function GetTarget()
     local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not myRoot then return nil end
 
-    local whitelistActive = false
-    for _ in pairs(SelectedEnemies) do whitelistActive = true; break end
-
-    -- Sticky Logic
-    local current = getgenv().CurrentTarget
-    if current and current.Parent and current:FindFirstChild("Humanoid") and current.Humanoid.Health > 0 then
-        if whitelistActive and not SelectedEnemies[current.Name] then
-            -- Drop
-        else
-            if (current.HumanoidRootPart.Position - myRoot.Position).Magnitude < 300 then return current end
-        end
-    end
-
     local best = nil
     local shortest = math.huge
 
@@ -826,7 +623,6 @@ local function GetTarget()
         for _, v in ipairs(folder:GetDescendants()) do
             if v:IsA("Humanoid") and v.Health > 0 and v.Parent and v.Parent:FindFirstChild("HumanoidRootPart") then
                 local mob = v.Parent
-                if whitelistActive and not SelectedEnemies[mob.Name] then continue end
                 local d = (mob.HumanoidRootPart.Position - myRoot.Position).Magnitude
                 if d < shortest then
                     shortest = d
@@ -955,34 +751,7 @@ task.spawn(function()
     end
 end)
 
-task.spawn(function()
-    while task.wait(0.5) do
-        if getgenv().NebuBlox_SessionID ~= SessionID then 
-            if HatchOverlay then HatchOverlay:Destroy() end
-            break 
-        end
-        local targetEgg = nil
-        local eggName = ""
-        if Flags.HatchOnePiece then targetEgg = Workspace.Eggs.OnePiece.OnePiece.EggModel.Egg; eggName = "One Piece" end
-        if Flags.HatchNaruto then targetEgg = Workspace.Eggs.Naruto.Naruto.EggModel:FindFirstChild("Egeg") or Workspace.Eggs.Naruto.Naruto.EggModel:FindFirstChild("Egg"); eggName = "Naruto" end
-        if Flags.HatchJJK then targetEgg = Workspace.Eggs.Jjk.Jjk.EggModel.Egg; eggName = "JJK" end
-        if Flags.HatchSlayer then targetEgg = Workspace.Eggs.DemonSlayer.DemonSlayer.EggModel.Egg; eggName = "Demon Slayer" end
-        if Flags.HatchDBZ then targetEgg = Workspace.Eggs.Dbz.Dbz.EggModel.Egg; eggName = "Dragon Ball" end
-        
-        if targetEgg then
-            UpdateHatchUI("Hatching: " .. eggName)
-            pcall(function()
-                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    player.Character.HumanoidRootPart.CFrame = targetEgg.CFrame * CFrame.new(0,0,3)
-                end
-                local EggRemote = Remotes.Egg and Remotes.Egg:FindFirstChild("Egg")
-                if EggRemote then EggRemote:FireServer("AutoHatch") end
-            end)
-        else
-            UpdateHatchUI(nil)
-        end
-    end
-end)
+
 
 -- AUTOMATION & SWAPPED GAMEMODE LOGIC
 task.spawn(function()
