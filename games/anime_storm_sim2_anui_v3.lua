@@ -1406,108 +1406,106 @@ task.spawn(function()
             if PerformReturn then
                 local now = tick()
                 local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                if not root then return end
                 
-                -- Check Trial State
-                local tf = Workspace:FindFirstChild("TrialRoomNpc")
-                local InTrialNow = tf and #tf:GetChildren() > 0
-                
-                -- Check Invasion State
-                local invF = Workspace:FindFirstChild("InvasionNpc")
-                local InInvasionNow = invF and #invF:GetChildren() > 0
-                
-                -- Track Invasion State
-                if Flags.AutoInvasionStart then
-                    if InInvasionNow then
-                        InInvasion = true
-                        LastInvasionCheck = now
-                    end
-                end
-                
-                -- TRIAL RETURN: If we joined a trial AND it's now empty
-                -- Removed 300s timeout to allow long runs
-                -- ADDED: TrialSuccess check
-                if Flags.AutoTrial and (now - LastTrialJoinTime > 10) then
-                    if not InTrialNow then
-                        if getgenv().TrialSuccess then
-                            print("[Nebublox] Trial Success Verified! Returning...")
-                            -- Trial ended! Perform return
-                            local internalName = MapDisplayToInternal[SelectedReturnMap] or SelectedReturnMap
-                            
-                            -- Check for saved position match
-                            if SavedCFrame and getgenv().SavedMapInternalName then
-                                local savedMap = getgenv().SavedMapInternalName:lower()
-                                if internalName:lower() == savedMap then
-                                    root.CFrame = SavedCFrame
-                                    ANUI:Notify({Title = "Trial Complete!", Content = "Returned to saved spot in " .. SelectedReturnMap, Icon = "check", Duration = 3})
-                                    LastTrialJoinTime = now + 999999
-                                    getgenv().TrialSuccess = false -- Reset
-                                    return
-                                end
-                            end
-                            
-                            -- Use World Remote for spawn teleport
-                            local WorldRemote = Remotes:FindFirstChild("World")
-                            local teleported = false
-                            pcall(function()
-                                if WorldRemote then
-                                    -- Try multiple teleport call formats
-                                    WorldRemote:FireServer("Teleport", internalName)
-                                    WorldRemote:FireServer(internalName, "Teleport")
-                                    WorldRemote:FireServer("TeleportToWorld", internalName)
-                                    ANUI:Notify({Title = "Trial Complete!", Content = "Returned to: " .. SelectedReturnMap, Icon = "map-pin", Duration = 3})
-                                    teleported = true
-                                end
-                            end)
-                            
-                            if not teleported then
-                                -- Fallback: Try Maps folder teleport
-                                local maps = Workspace:FindFirstChild("Maps")
-                                local targetMap = maps and maps:FindFirstChild(internalName)
-                                local spawn = targetMap and (targetMap:FindFirstChild("Spawn") or targetMap:FindFirstChild("SpawnPoint"))
-                                if spawn then
-                                    root.CFrame = spawn.CFrame + Vector3.new(0, 5, 0)
-                                    ANUI:Notify({Title = "Trial Complete!", Content = "Teleported to: " .. SelectedReturnMap, Icon = "map-pin", Duration = 3})
-                                end
-                            end
-                            
-                            LastTrialJoinTime = now + 999999
-                            getgenv().TrialSuccess = false -- Reset
-                        else
-                             -- print("[Nebublox] Trial Ended but Success NOT detected. Staying in lobby.")
-                        end
-                    end
-                end
-                
-                -- INVASION RETURN: If we were in invasion AND it's now empty for 5s
-                if Flags.AutoInvasionStart and InInvasion and not InInvasionNow and (now - LastInvasionCheck > 5) then
-                    InInvasion = false -- Reset
+                if root then
+                    -- Check Trial State
+                    local tf = Workspace:FindFirstChild("TrialRoomNpc")
+                    local InTrialNow = tf and #tf:GetChildren() > 0
                     
-                    -- User Requested: Use firesignal to simulate client events
-                    pcall(function()
-                        if firesignal then
-                            local WorldRemote = Remotes:FindFirstChild("World")
-                            if WorldRemote then
-                                firesignal(WorldRemote.OnClientEvent, "StartWorldEffects", "DemonSlayer")
-                                ANUI:Notify({Title = "Invasion Done", Content = "Signaled World Return (Client)", Icon = "map", Duration = 3})
-                            end
-                            
-                            local GamemodeUi = Remotes:FindFirstChild("GamemodeUi")
-                            if GamemodeUi then
-                                firesignal(GamemodeUi.OnClientEvent, "CloseGamemodeUi")
-                            end
-                        else
-                             -- Fallback if executor lacks firesignal
-                             local WorldRemote = Remotes:FindFirstChild("World")
-                             if WorldRemote then WorldRemote:FireServer("Teleport", "DemonSlayer") end
-                             ANUI:Notify({Title = "Invasion Done", Content = "Fallback: Standard Teleport", Icon = "alert-triangle", Duration = 3})
+                    -- Check Invasion State
+                    local invF = Workspace:FindFirstChild("InvasionNpc")
+                    local InInvasionNow = invF and #invF:GetChildren() > 0
+                    
+                    -- Track Invasion State
+                    if Flags.AutoInvasionStart then
+                        if InInvasionNow then
+                            InInvasion = true
+                            LastInvasionCheck = now
                         end
-                    end)
-                end
-            end
-        end)
-    end
-end)
+                    end
+                    
+                    -- TRIAL RETURN: If we joined a trial AND it's now empty
+                    if Flags.AutoTrial and (now - LastTrialJoinTime > 10) then
+                        if not InTrialNow then
+                            if getgenv().TrialSuccess then
+                                print("[Nebublox] Trial Success Verified! Returning...")
+                                -- Trial ended! Perform return
+                                local internalName = MapDisplayToInternal[SelectedReturnMap] or SelectedReturnMap
+                                
+                                -- Check for saved position match
+                                local returnedToSave = false
+                                if SavedCFrame and getgenv().SavedMapInternalName then
+                                    local savedMap = getgenv().SavedMapInternalName:lower()
+                                    if internalName:lower() == savedMap then
+                                        root.CFrame = SavedCFrame
+                                        ANUI:Notify({Title = "Trial Complete!", Content = "Returned to saved spot in " .. SelectedReturnMap, Icon = "check", Duration = 3})
+                                        returnedToSave = true
+                                    end
+                                end
+                                
+                                if not returnedToSave then
+                                    -- Use World Remote for spawn teleport
+                                    local WorldRemote = Remotes:FindFirstChild("World")
+                                    local teleported = false
+                                    pcall(function()
+                                        if WorldRemote then
+                                            -- Try multiple teleport call formats
+                                            WorldRemote:FireServer("Teleport", internalName)
+                                            WorldRemote:FireServer(internalName, "Teleport")
+                                            WorldRemote:FireServer("TeleportToWorld", internalName)
+                                            ANUI:Notify({Title = "Trial Complete!", Content = "Returned to: " .. SelectedReturnMap, Icon = "map-pin", Duration = 3})
+                                            teleported = true
+                                        end
+                                    end)
+                                    
+                                    if not teleported then
+                                        -- Fallback: Try Maps folder teleport
+                                        local maps = Workspace:FindFirstChild("Maps")
+                                        local targetMap = maps and maps:FindFirstChild(internalName)
+                                        local spawn = targetMap and (targetMap:FindFirstChild("Spawn") or targetMap:FindFirstChild("SpawnPoint"))
+                                        if spawn then
+                                            root.CFrame = spawn.CFrame + Vector3.new(0, 5, 0)
+                                            ANUI:Notify({Title = "Trial Complete!", Content = "Teleported to: " .. SelectedReturnMap, Icon = "map-pin", Duration = 3})
+                                        end
+                                    end
+                                end
+                                
+                                LastTrialJoinTime = now + 999999
+                                getgenv().TrialSuccess = false -- Reset
+                            end -- End TrialSuccess
+                        end -- End InTrialNow
+                    end -- End AutoTrial
+                    
+                    -- INVASION RETURN: If we were in invasion AND it's now empty for 5s
+                    if Flags.AutoInvasionStart and InInvasion and not InInvasionNow and (now - LastInvasionCheck > 5) then
+                        InInvasion = false -- Reset
+                        
+                        -- User Requested: Use firesignal to simulate client events
+                        pcall(function()
+                            if firesignal then
+                                local WorldRemote = Remotes:FindFirstChild("World")
+                                if WorldRemote then
+                                    firesignal(WorldRemote.OnClientEvent, "StartWorldEffects", "DemonSlayer")
+                                    ANUI:Notify({Title = "Invasion Done", Content = "Signaled World Return (Client)", Icon = "map", Duration = 3})
+                                end
+                                
+                                local GamemodeUi = Remotes:FindFirstChild("GamemodeUi")
+                                if GamemodeUi then
+                                    firesignal(GamemodeUi.OnClientEvent, "CloseGamemodeUi")
+                                end
+                            else
+                                 -- Fallback if executor lacks firesignal
+                                 local WorldRemote = Remotes:FindFirstChild("World")
+                                 if WorldRemote then WorldRemote:FireServer("Teleport", "DemonSlayer") end
+                                 ANUI:Notify({Title = "Invasion Done", Content = "Fallback: Standard Teleport", Icon = "alert-triangle", Duration = 3})
+                            end
+                        end)
+                    end -- End Invasion Return
+                end -- End Root Check
+            end -- End PerformReturn
+        end) -- End Pcall
+    end -- End While
+end) -- End Spawn
 
 -- AUTO TRIAL JOIN
 task.spawn(function()
