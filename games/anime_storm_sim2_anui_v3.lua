@@ -352,7 +352,7 @@ Visual Interface: ANUI v3.1
 
 CURRENT PARAMETERS
 
-Patch Date: 02/08/26 (v3.5)
+Patch Date: 02/08/26 (v3.6)
 Target Reality: Anime Storm Simulator 2
 Origin: Roblox Community Group
 
@@ -913,28 +913,11 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
 
 -- [SMART TARGET FINDER]
 local function GetSmartTarget()
-    local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return nil end
-    if not player.Character:IsDescendantOf(Workspace) then return nil end
-    
     local bestTarget = nil
-    local shortestDist = 999999
+    local shortestDist = math.huge
+    local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     
-    local selectedCount = 0
-    for _ in pairs(SelectedEnemies) do selectedCount = selectedCount + 1 end
-
-    local function CheckMob(humanoid)
-        if not humanoid or not humanoid:IsA("Humanoid") then return end
-        local mob = humanoid.Parent
-        if not mob or DeadBlacklist[mob] or LastTargetedTime[mob] then return end
-        
-        local rootPart = mob:FindFirstChild("HumanoidRootPart")
-        if not rootPart or not mob:IsDescendantOf(Workspace) then return end
-        if humanoid.Health <= 0 or mob.Name == player.Name then DeadBlacklist[mob] = true; return end
-        
-        local isValid = false
-        -- RESTRICTED: TrialAttackAll logic handled inside scanner loops
-        
+    if not myRoot then return nil end
 
     local function CheckMob(mob)
         if mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 and mob:FindFirstChild("HumanoidRootPart") then
@@ -973,8 +956,6 @@ local function GetSmartTarget()
     
     -- PRIORITY 3: BOSS RUSH
     if Flags.BossRushDBZ or Flags.BossRushJJK then
-        -- Boss Rush Mobs? Usually just one boss.
-        -- We will scan the specific boss rush map if it exists
         local mapName = Flags.BossRushDBZ and "dbzBossRush" or "JjkBossRush"
         local brMap = Workspace.Maps:FindFirstChild(mapName)
         if brMap then
@@ -985,15 +966,8 @@ local function GetSmartTarget()
 
     -- PRIORITY 4: AUTO FARM (Lowest)
     if Flags.SmartFarm then
-        -- STRICT: Only scan Normal Mobs (and Invasion/Trial folders if they happen to have lingering mobs but mode is OFF? No, user said ignore if active)
-        -- Normal Mobs in "Npc" folder
         local normalNpc = Workspace:FindFirstChild("Npc")
         if normalNpc then for _, o in ipairs(normalNpc:GetDescendants()) do CheckMob(o) end end
-        
-        -- Also scan "InvasionNpc" IF AutoInvasion is OFF (maybe user just wants to farm them without auto-start?)
-        -- But strictly speaking, SmartFarm should just target closest valid mob.
-        -- Use user's instruction: "Only run if Trial, Invasion, and Boss Rush are ALL inactive"
-        -- If we are here, they ARE inactive (or flags are off).
         return bestTarget
     end
     
@@ -1424,4 +1398,4 @@ task.spawn(function()
     end)
 end)
 
-ANUI:Notify({Title = "Nebublox", Content = "Loaded v3.5 (Critical Syntax Fix)", Icon = "check", Duration = 5})
+ANUI:Notify({Title = "Nebublox", Content = "Loaded v3.6 (Fixed Logic Block)", Icon = "check", Duration = 5})
