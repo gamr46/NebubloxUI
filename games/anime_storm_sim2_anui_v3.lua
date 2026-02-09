@@ -361,7 +361,7 @@ Visual Interface: ANUI v3.1
 
 CURRENT PARAMETERS
 
-Patch Date: 02/08/26 (v3.1)
+Patch Date: 02/08/26 (v3.2)
 Target Reality: Anime Storm Simulator 2
 Origin: Roblox Community Group
 
@@ -1128,73 +1128,23 @@ task.spawn(function()
             
             -- Invasion (Slayer World) - Only if NOT In Trial
             if Flags.AutoInvasionStart and not InTrial then 
-                local InvasionFolder = Remotes:FindFirstChild("Invasion")
-                local foundRemote = false
-                
-                if InvasionFolder then
-                    local InvRemote = InvasionFolder:FindFirstChild("InvasionRemote")
-                    local InvStart = InvasionFolder:FindFirstChild("InvasionStart")
-                    local InvUpdate = InvasionFolder:FindFirstChild("UpdateUi") or InvasionFolder:FindFirstChild("InvasionUpdate")
-                    local InvJoin = InvasionFolder:FindFirstChild("JoinInvasion")
+                local InvStart = Remotes.Invasion and Remotes.Invasion:FindFirstChild("InvasionStart")
+                if InvStart then
+                    -- 1. Fire Start Remote
+                    InvStart:FireServer("StartUi", "DemonSlayerInvasion")
                     
-                    -- Try multiple invasion start methods
-                    pcall(function()
-                        if InvStart then 
-                            print("State: Invasion Started (Method 1)")
-                            foundRemote = true
-                            InvStart:FireServer("Start", "DemonSlayerInvasion")
-                            InvStart:FireServer("StartUi", "DemonSlayerInvasion")
-                            InvStart:FireServer("Enter", "DemonSlayerInvasion")
-                            InvStart:FireServer("JoinInvasion", "DemonSlayerInvasion")
-                            InvStart:FireServer("StartInvasion")
+                    -- 2. Teleport to Invasion Boss Spawn (Immediately)
+                    local map = Workspace.Maps:FindFirstChild("DemonSlayerInvasion")
+                    local bossSpawn = map and map:FindFirstChild("NpcSpawns") and map.NpcSpawns:FindFirstChild("Boss")
+                    
+                    if bossSpawn and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        -- Only TP if not already there (distance check 200 studs)
+                        if (player.Character.HumanoidRootPart.Position - bossSpawn.Position).Magnitude > 200 then
+                            player.Character.HumanoidRootPart.CFrame = bossSpawn.CFrame
+                            print("[Nebublox] Teleported to Invasion Boss Spawn")
                         end
-                        if InvRemote then
-                            foundRemote = true
-                            InvRemote:FireServer("StartInvasion", "DemonSlayerInvasion")
-                            InvRemote:FireServer("JoinInvasion", "DemonSlayerInvasion")
-                            InvRemote:FireServer("Start", "DemonSlayerInvasion")
-                            InvRemote:FireServer("Enter")
-                            InvRemote:FireServer("Begin", "DemonSlayerInvasion")
-                        end
-                        if InvJoin then
-                            foundRemote = true
-                            InvJoin:FireServer("DemonSlayerInvasion")
-                            InvJoin:FireServer("Join", "DemonSlayerInvasion")
-                        end
-                        if InvUpdate then
-                            InvUpdate:FireServer("JoinInvasion", "DemonSlayerInvasion")
-                            InvUpdate:FireServer("StartInvasion", "DemonSlayerInvasion")
-                        end
-                    end)
+                    end
                 end
-                
-                -- Also try direct remote path (alternative structure)
-                pcall(function()
-                    local directInv = Remotes:FindFirstChild("InvasionStart") or Remotes:FindFirstChild("InvasionRemote") or Remotes:FindFirstChild("StartInvasion")
-                    if directInv then
-                        foundRemote = true
-                        directInv:FireServer("Start", "DemonSlayerInvasion")
-                        directInv:FireServer("Enter", "DemonSlayerInvasion")
-                        directInv:FireServer("Begin", "DemonSlayerInvasion")
-                        directInv:FireServer("DemonSlayerInvasion")
-                    end
-                end)
-                
-                -- Try scanning all Remotes for invasion-related names
-                pcall(function()
-                    for _, remote in ipairs(Remotes:GetDescendants()) do
-                        if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-                            local name = remote.Name:lower()
-                            if name:find("invasion") then
-                                foundRemote = true
-                                pcall(function() remote:FireServer("Start", "DemonSlayerInvasion") end)
-                                pcall(function() remote:FireServer("Enter", "DemonSlayerInvasion") end)
-                                pcall(function() remote:FireServer("Join", "DemonSlayerInvasion") end)
-                                pcall(function() remote:FireServer("DemonSlayerInvasion") end)
-                            end
-                        end
-                    end
-                end)
             end
             
             -- Boss - Only if NOT In Trial
@@ -1355,26 +1305,27 @@ task.spawn(function()
                 -- INVASION RETURN: If we were in invasion AND it's now empty for 5s
                 if Flags.AutoInvasionStart and InInvasion and not InInvasionNow and (now - LastInvasionCheck > 5) then
                     InInvasion = false -- Reset
-                    local internalName = MapDisplayToInternal[SelectedReturnMap] or SelectedReturnMap
                     
-                    local WorldRemote = Remotes:FindFirstChild("World")
-                    if WorldRemote then
-                        -- Try multiple teleport call formats
-                        pcall(function() WorldRemote:FireServer("Teleport", internalName) end)
-                        pcall(function() WorldRemote:FireServer(internalName, "Teleport") end)
-                        pcall(function() WorldRemote:FireServer("TeleportToWorld", internalName) end)
-                        pcall(function() WorldRemote:FireServer(internalName) end)
-                        ANUI:Notify({Title = "Invasion Complete!", Content = "Returned to: " .. SelectedReturnMap, Icon = "map-pin", Duration = 3})
-                    else
-                        -- Fallback: Direct teleport to map spawn
-                        local maps = Workspace:FindFirstChild("Maps")
-                        local targetMap = maps and maps:FindFirstChild(internalName)
-                        local spawn = targetMap and (targetMap:FindFirstChild("Spawn") or targetMap:FindFirstChild("SpawnPoint"))
-                        if spawn then
-                            root.CFrame = spawn.CFrame + Vector3.new(0, 5, 0)
-                            ANUI:Notify({Title = "Invasion Complete!", Content = "Teleported to: " .. SelectedReturnMap, Icon = "map-pin", Duration = 3})
+                    -- User Requested: Use firesignal to simulate client events
+                    pcall(function()
+                        if firesignal then
+                            local WorldRemote = Remotes:FindFirstChild("World")
+                            if WorldRemote then
+                                firesignal(WorldRemote.OnClientEvent, "StartWorldEffects", "DemonSlayer")
+                                ANUI:Notify({Title = "Invasion Done", Content = "Signaled World Return (Client)", Icon = "map", Duration = 3})
+                            end
+                            
+                            local GamemodeUi = Remotes:FindFirstChild("GamemodeUi")
+                            if GamemodeUi then
+                                firesignal(GamemodeUi.OnClientEvent, "CloseGamemodeUi")
+                            end
+                        else
+                             -- Fallback if executor lacks firesignal
+                             local WorldRemote = Remotes:FindFirstChild("World")
+                             if WorldRemote then WorldRemote:FireServer("Teleport", "DemonSlayer") end
+                             ANUI:Notify({Title = "Invasion Done", Content = "Fallback: Standard Teleport", Icon = "alert-triangle", Duration = 3})
                         end
-                    end
+                    end)
                 end
             end
         end)
@@ -1429,4 +1380,4 @@ task.spawn(function()
     end)
 end)
 
-ANUI:Notify({Title = "Nebublox", Content = "Loaded v3.1 (About Fix)", Icon = "check", Duration = 5})
+ANUI:Notify({Title = "Nebublox", Content = "Loaded v3.2 (Invasion Fix)", Icon = "check", Duration = 5})
