@@ -286,22 +286,39 @@ local Window = ANUI:CreateWindow({
 getgenv().ANUI_Window = Window
 
 -- [UI POLISH: Fix Icon Scaling]
+-- [UI POLISH: Fix Icon Scaling]
 task.spawn(function()
-    task.wait(1)
-    -- Attempt to find the Icon in the CoreGui/PlayerGui
-    local function FixIcon(root)
-        if not root then return end
-        for _, img in ipairs(root:GetDescendants()) do
-            if img:IsA("ImageLabel") and img.Image:find("120742610207737") then
-                img.ScaleType = Enum.ScaleType.Crop -- Force fill
-                img.BackgroundTransparency = 1 -- Remove black background
-                img.BackgroundColor3 = Color3.new(0,0,0) -- Ensure no visual artifact
-                -- Add circular mask if missing? ANUI usually handles it.
+    local attempts = 0
+    while attempts < 20 do
+        task.wait(1)
+        attempts = attempts + 1
+        
+        local function FixIcon(root)
+            if not root then return end
+            for _, img in ipairs(root:GetDescendants()) do
+                -- Check for Icon by Name or Image ID snippet
+                if img:IsA("ImageLabel") then
+                    if (img.Name == "Icon" or img.Name == "Logo" or (img.Image and img.Image:find("120742610207737"))) then
+                        img.ScaleType = Enum.ScaleType.Crop -- Force fill
+                        img.BackgroundTransparency = 1 
+                        img.BackgroundColor3 = Color3.new(0,0,0)
+                        -- If it has a UICorner, ensure it's circular
+                        local corner = img:FindFirstChildOfClass("UICorner")
+                        if not corner then
+                             local c = Instance.new("UICorner", img)
+                             c.CornerRadius = UDim.new(1, 0)
+                        else
+                             corner.CornerRadius = UDim.new(1, 0)
+                        end
+                    end
+                end
             end
         end
+        
+        FixIcon(game:GetService("CoreGui"):FindFirstChild("Nebublox"))
+        FixIcon(game:GetService("CoreGui"):FindFirstChild("ANUI"))
+        FixIcon(player.PlayerGui:FindFirstChild("Nebublox"))
     end
-    FixIcon(game:GetService("CoreGui"))
-    FixIcon(player.PlayerGui)
 end)
 
 -- [TAB 1: ABOUT]
@@ -345,7 +362,7 @@ AboutSection:Label("System Version: v4.0 (Stable)")
 AboutSection:Label("Developer: Lil Nug of Wisdom")
 AboutSection:Label("UI Library: ANUI v3")
 AboutSection:Label("Target Game: Anime Storm Sim 2")
-AboutSection:Label("Updated: 02/08/26 (v4.0)")
+AboutSection:Label("Updated: 02/08/26 (v4.1)")
 
 AboutSection:Button({
     Title = "Copy Discord Link",
@@ -1450,4 +1467,4 @@ task.spawn(function()
     end)
 end)
 
-ANUI:Notify({Title = "Nebublox", Content = "Loaded v4.0 (UI Refactor)", Icon = "check", Duration = 5})
+ANUI:Notify({Title = "Nebublox", Content = "Loaded v4.1 (Icon Fix)", Icon = "check", Duration = 5})
