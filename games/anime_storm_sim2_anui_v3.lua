@@ -339,30 +339,23 @@ end)
 
 -- About Content (One Clean Paragraph)
 
-local AboutSection = MainTab:Section({ Title = "Nebublox", Icon = "star", Opened = true })
-AboutSection:Paragraph({
-    Title = "Welcome to Nebublox",
-    Content = [[
-// SYSTEM INFORMATION
+local AboutSection = MainTab:Section({ Title = "Nebublox Information", Icon = "info", Opened = true })
 
-ARCHITECTS
+AboutSection:Label("System Version: v3.7 (Stable)")
+AboutSection:Label("Developer: Lil Nug of Wisdom")
+AboutSection:Label("UI Library: ANUI v3")
+AboutSection:Label("Target Game: Anime Storm Sim 2")
+AboutSection:Label("Updated: 02/08/2026")
 
-Core & Logic: Lil Nug of Wisdom
-Visual Interface: ANUI v3.1
-
-CURRENT PARAMETERS
-
-Patch Date: 02/08/26 (v3.6)
-Target Reality: Anime Storm Simulator 2
-Origin: Roblox Community Group
-
-TRANSMISSION
-Seeking to expand the void? Access our frequency.
-Share your #dark-visions and propose the next #forbidden-script.
-
-[LINK] DISCORD: discord.gg/nebublox
-]]
+AboutSection:Button({
+    Title = "Copy Discord Link",
+    Callback = function()
+        setclipboard("https://discord.gg/nebublox")
+        ANUI:Notify({Title = "Discord", Content = "Link copied to clipboard!", Icon = "copy", Duration = 3})
+    end
 })
+
+AboutSection:Label("Note: Check 'Champions' tab for new Auto Hatch!")
 
 -- [TAB 2: FARM (SMART FARM)]
 local TeleportTab = Window:Tab({ Title = "Farm", Icon = "map-pin" })
@@ -1398,4 +1391,4 @@ task.spawn(function()
     end)
 end)
 
-ANUI:Notify({Title = "Nebublox", Content = "Loaded v3.6 (Fixed Logic Block)", Icon = "check", Duration = 5})
+ANUI:Notify({Title = "Nebublox", Content = "Loaded v3.7 (About Tab Fix)", Icon = "check", Duration = 5})
