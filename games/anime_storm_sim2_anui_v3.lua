@@ -341,11 +341,11 @@ end)
 
 local AboutSection = MainTab:Section({ Title = "Nebublox Information", Icon = "info", Opened = true })
 
-AboutSection:Label("System Version: v3.7 (Stable)")
+AboutSection:Label("System Version: v4.0 (Stable)")
 AboutSection:Label("Developer: Lil Nug of Wisdom")
 AboutSection:Label("UI Library: ANUI v3")
 AboutSection:Label("Target Game: Anime Storm Sim 2")
-AboutSection:Label("Updated: 02/08/26 (v3.95)")
+AboutSection:Label("Updated: 02/08/26 (v4.0)")
 
 AboutSection:Button({
     Title = "Copy Discord Link",
@@ -712,28 +712,16 @@ local ConfigNameInput = ""
 local function CreateConfigManager(parent)
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "ConfigManagerFrame"
-    MainFrame.Size = UDim2.new(1, -10, 0, 260) -- Increased height for controls
+    MainFrame.Size = UDim2.new(1, -10, 0, 300) -- Increased height to fit everything nicely
     MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
     MainFrame.BorderSizePixel = 0
     MainFrame.Parent = parent
     Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
 
-    -- Header
-    local Header = Instance.new("TextLabel")
-    Header.Size = UDim2.new(1, 0, 0, 30)
-    Header.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    Header.Text = "  Configuration Manager"
-    Header.TextColor3 = Color3.fromRGB(220, 220, 220)
-    Header.TextSize = 14
-    Header.Font = Enum.Font.GothamBold
-    Header.TextXAlignment = Enum.TextXAlignment.Left
-    Header.Parent = MainFrame
-    Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 8)
-
-    -- Input Box
+    -- 1. Input Box (Top)
     local InputFrame = Instance.new("Frame")
     InputFrame.Size = UDim2.new(1, -20, 0, 35)
-    InputFrame.Position = UDim2.new(0, 10, 0, 40)
+    InputFrame.Position = UDim2.new(0, 10, 0, 10) -- Moved up
     InputFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
     InputFrame.Parent = MainFrame
     Instance.new("UICorner", InputFrame).CornerRadius = UDim.new(0, 6)
@@ -755,7 +743,7 @@ local function CreateConfigManager(parent)
         ConfigNameInput = NameInput.Text
     end)
 
-    -- Action Buttons Row
+    -- 2. Action Buttons Row
     local function CreateBtn(text, color, pos, callback)
         local btn = Instance.new("TextButton")
         btn.Text = text
@@ -771,8 +759,8 @@ local function CreateConfigManager(parent)
         return btn
     end
 
-    -- Save (Orange)
-    CreateBtn("SAVE", Color3.fromRGB(255, 100, 0), UDim2.new(0, 10, 0, 85), function()
+    -- Y = 55 (Below Input)
+    CreateBtn("SAVE", Color3.fromRGB(255, 100, 0), UDim2.new(0, 10, 0, 55), function()
         ConfigNameInput = NameInput.Text
         if ConfigNameInput ~= "" then
             ConfigSystem.SaveConfig(ConfigNameInput)
@@ -782,8 +770,7 @@ local function CreateConfigManager(parent)
         end
     end)
 
-    -- Load (Blue)
-    CreateBtn("LOAD", Color3.fromRGB(0, 120, 215), UDim2.new(0.35, 10, 0, 85), function()
+    CreateBtn("LOAD", Color3.fromRGB(0, 120, 215), UDim2.new(0.35, 10, 0, 55), function()
         ConfigNameInput = NameInput.Text
         if ConfigNameInput ~= "" then
             ConfigSystem.LoadConfig(ConfigNameInput)
@@ -792,8 +779,7 @@ local function CreateConfigManager(parent)
         end
     end)
 
-    -- Delete (Red)
-    CreateBtn("DELETE", Color3.fromRGB(200, 50, 50), UDim2.new(0.7, 10, 0, 85), function()
+    CreateBtn("DELETE", Color3.fromRGB(200, 50, 50), UDim2.new(0.7, 10, 0, 55), function()
         ConfigNameInput = NameInput.Text
         if ConfigNameInput ~= "" then
             ConfigSystem.DeleteConfig(ConfigNameInput)
@@ -801,10 +787,10 @@ local function CreateConfigManager(parent)
         end
     end)
 
-    -- List Header
+    -- 3. List Header
     local ListLabel = Instance.new("TextLabel")
     ListLabel.Size = UDim2.new(1, -20, 0, 20)
-    ListLabel.Position = UDim2.new(0, 10, 0, 125)
+    ListLabel.Position = UDim2.new(0, 10, 0, 95)
     ListLabel.BackgroundTransparency = 1
     ListLabel.Text = "Saved Configurations:"
     ListLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -813,10 +799,10 @@ local function CreateConfigManager(parent)
     ListLabel.TextXAlignment = Enum.TextXAlignment.Left
     ListLabel.Parent = MainFrame
 
-    -- Scroll List
+    -- 4. Scroll List
     local ScrollFrame = Instance.new("ScrollingFrame")
-    ScrollFrame.Size = UDim2.new(1, -20, 1, -155)
-    ScrollFrame.Position = UDim2.new(0, 10, 0, 145)
+    ScrollFrame.Size = UDim2.new(1, -20, 1, -145) -- Leaves space at bottom for AutoLoad
+    ScrollFrame.Position = UDim2.new(0, 10, 0, 115)
     ScrollFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     ScrollFrame.BorderSizePixel = 0
     ScrollFrame.ScrollBarThickness = 4
@@ -827,6 +813,38 @@ local function CreateConfigManager(parent)
     ListLayout.SortOrder = Enum.SortOrder.Name
     ListLayout.Padding = UDim.new(0, 2)
     ListLayout.Parent = ScrollFrame
+
+    -- 5. AutoLoad Toggle (Bottom)
+    local ToggleFrame = Instance.new("Frame")
+    ToggleFrame.Size = UDim2.new(1, -20, 0, 24)
+    ToggleFrame.Position = UDim2.new(0, 10, 1, -28) -- Bottom aligned
+    ToggleFrame.BackgroundTransparency = 1
+    ToggleFrame.Parent = MainFrame
+    
+    local ToggleBtn = Instance.new("TextButton")
+    ToggleBtn.Size = UDim2.new(0, 24, 0, 24)
+    ToggleBtn.Position = UDim2.new(0, 0, 0, 0)
+    ToggleBtn.BackgroundColor3 = getgenv().NebubloxSettings.AutoLoad and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 60)
+    ToggleBtn.Text = ""
+    ToggleBtn.Parent = ToggleFrame
+    Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 4)
+    
+    local ToggleLabel = Instance.new("TextLabel")
+    ToggleLabel.Size = UDim2.new(1, -30, 1, 0)
+    ToggleLabel.Position = UDim2.new(0, 30, 0, 0)
+    ToggleLabel.BackgroundTransparency = 1
+    ToggleLabel.Text = "Autoload Selected Config on Startup"
+    ToggleLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    ToggleLabel.Font = Enum.Font.Gotham
+    ToggleLabel.TextSize = 13
+    ToggleLabel.Parent = ToggleFrame
+    
+    ToggleBtn.MouseButton1Click:Connect(function()
+        local newState = not getgenv().NebubloxSettings.AutoLoad
+        getgenv().NebubloxSettings.AutoLoad = newState
+        ToggleBtn.BackgroundColor3 = newState and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 60)
+    end)
 
     local function RefreshConfigList()
         for _, c in pairs(ScrollFrame:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
@@ -908,13 +926,7 @@ end)
 -- [REMOVED STANDARD BUTTONS]
 -- [REMOVED STANDARD BUTTONS]
 
-ConfigSection:Toggle({
-    Title = "Autoload on Startup",
-    Value = getgenv().NebubloxSettings.AutoLoad,
-    Callback = function(s)
-        getgenv().NebubloxSettings.AutoLoad = s
-    end
-})
+
 
 -- Section B: System Performance
 local PerfSection = SettingsTab:Section({ Title = "System Performance", Icon = "cpu", Opened = true })
@@ -1438,4 +1450,4 @@ task.spawn(function()
     end)
 end)
 
-ANUI:Notify({Title = "Nebublox", Content = "Loaded v3.95 (Refactor)", Icon = "check", Duration = 5})
+ANUI:Notify({Title = "Nebublox", Content = "Loaded v4.0 (UI Refactor)", Icon = "check", Duration = 5})
