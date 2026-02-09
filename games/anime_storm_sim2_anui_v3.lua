@@ -361,7 +361,7 @@ Visual Interface: ANUI v3.1
 
 CURRENT PARAMETERS
 
-Patch Date: 02/08/26 (v3.3)
+Patch Date: 02/08/26 (v3.4)
 Target Reality: Anime Storm Simulator 2
 Origin: Roblox Community Group
 
@@ -624,7 +624,19 @@ UpgradeSection:Toggle({ Title = "Auto Upgrade Drops", Value = false, Callback = 
 UpgradeSection:Toggle({ Title = "Auto Upgrade Luck", Value = false, Callback = function(s) Flags.TrialUpgradeLuck = s end })
 UpgradeSection:Toggle({ Title = "Auto Upgrade Walkspeed", Value = false, Callback = function(s) Flags.TrialUpgradeWalkspeed = s end })
 
--- [TAB 3: GAMEMODES (Consolidated)]
+-- [TAB 3: CHAMPIONS (New)]
+local ChampionsTab = Window:Tab({ Title = "Champions", Icon = "egg" })
+local EggSection = ChampionsTab:Section({ Title = "Auto Hatch Champions", Icon = "egg", Opened = true })
+
+EggSection:Toggle({ Title = "Auto Hatch One Piece", Value = false, Callback = function(s) Flags.HatchOnePiece = s end })
+EggSection:Toggle({ Title = "Auto Hatch Naruto", Value = false, Callback = function(s) Flags.HatchNaruto = s end })
+EggSection:Toggle({ Title = "Auto Hatch JJK", Value = false, Callback = function(s) Flags.HatchJJK = s end })
+EggSection:Toggle({ Title = "Auto Hatch Demon Slayer", Value = false, Callback = function(s) Flags.HatchSlayer = s end })
+EggSection:Toggle({ Title = "Auto Hatch Dragon Ball", Value = false, Callback = function(s) Flags.HatchDBZ = s end })
+
+EggSection:Toggle({ Title = "Disable Egg Animation (Local)", Value = false, Callback = function(s) Flags.DisableEggAnim = s end })
+
+-- [TAB 4: GAMEMODES (Consolidated)]
 local GamemodesTab = Window:Tab({ Title = "Gamemodes", Icon = "swords" })
 
 local BossSection = GamemodesTab:Section({ Title = "World Boss Rushes", Icon = "skull", Opened = true })
@@ -1109,6 +1121,35 @@ task.spawn(function()
     end
 end)
 
+-- AUTO HATCH LOOP
+task.spawn(function()
+    while task.wait(0.5) do
+        if getgenv().NebuBlox_SessionID ~= SessionID then break end
+        
+        local targetEgg = nil
+        if Flags.HatchOnePiece then targetEgg = Workspace.Eggs.OnePiece.OnePiece.EggModel.Egg end
+        if Flags.HatchNaruto then targetEgg = Workspace.Eggs.Naruto.Naruto.EggModel:FindFirstChild("Egeg") or Workspace.Eggs.Naruto.Naruto.EggModel:FindFirstChild("Egg") end
+        if Flags.HatchJJK then targetEgg = Workspace.Eggs.Jjk.Jjk.EggModel.Egg end
+        if Flags.HatchSlayer then targetEgg = Workspace.Eggs.DemonSlayer.DemonSlayer.EggModel.Egg end
+        if Flags.HatchDBZ then targetEgg = Workspace.Eggs.Dbz.Dbz.EggModel.Egg end
+        
+        if targetEgg then
+            -- Teleport close to egg
+            pcall(function()
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    player.Character.HumanoidRootPart.CFrame = targetEgg.CFrame * CFrame.new(0,0,3)
+                end
+                
+                -- Fire Hatch Remote
+                local EggRemote = Remotes.Egg and Remotes.Egg:FindFirstChild("Egg")
+                if EggRemote then
+                    EggRemote:FireServer("AutoHatch")
+                end
+            end)
+        end
+    end
+end)
+
 -- AUTOMATION (RESTORED ALL GACHAS)
 task.spawn(function()
     local SpecialProgressionRemote = Remotes:WaitForChild("SpecialProgression", 5)
@@ -1392,4 +1433,4 @@ task.spawn(function()
     end)
 end)
 
-ANUI:Notify({Title = "Nebublox", Content = "Loaded v3.3 (Logic Fixes)", Icon = "check", Duration = 5})
+ANUI:Notify({Title = "Nebublox", Content = "Loaded v3.4 (Champions Tab)", Icon = "check", Duration = 5})
