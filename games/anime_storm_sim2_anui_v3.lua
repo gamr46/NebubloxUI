@@ -99,6 +99,16 @@ local LastTrialJoinTime = math.huge -- Initialize to infinity so we don't return
 local InInvasion = false 
 local LastInvasionCheck = 0
 getgenv().TrialSuccess = false -- New global for tracking success
+local SavedReturnMap = "Same Spot" -- Default
+-- Serialization Helper
+local function SerializeCFrame(cf)
+    if not cf then return nil end
+    return {cf:GetComponents()}
+end
+local function DeserializeCFrame(data)
+    if not data then return nil end
+    return CFrame.new(unpack(data))
+end
 
 -- // CONFIG SYSTEM & PERFORMANCE BACKEND //
 local HttpService = game:GetService("HttpService")
@@ -137,6 +147,10 @@ function ConfigSystem.SaveConfig(name)
         if not isfolder(FolderName) then makefolder(FolderName) end
         if not isfolder(ConfigsFolder) then makefolder(ConfigsFolder) end
         
+        -- Serialize Saved Position
+        if SavedCFrame then Flags.SavedReturnPosition = SerializeCFrame(SavedCFrame) end
+        Flags.SavedReturnMap = SelectedReturnMap
+        
         -- Encode and save
         local json = HttpService:JSONEncode(Flags)
         writefile(ConfigsFolder .. "/" .. name .. ".json", json)
@@ -159,6 +173,10 @@ function ConfigSystem.LoadConfig(name)
             for key, value in pairs(decoded) do
                 Flags[key] = value
             end
+            -- Restore Saved Position
+            if Flags.SavedReturnPosition then SavedCFrame = DeserializeCFrame(Flags.SavedReturnPosition) end
+            if Flags.SavedReturnMap then SelectedReturnMap = Flags.SavedReturnMap end
+            
             getgenv().NebubloxSettings.LastConfig = name
             ANUI:Notify({Title = "Config", Content = "Loaded: " .. name, Icon = "folder-open", Duration = 3})
         else
@@ -181,6 +199,7 @@ function ConfigSystem.GetConfigs()
     local names = {}
     pcall(function()
         local files = listfiles(ConfigsFolder)
+        print("[Nebublox Debug] Found " .. #files .. " files in " .. ConfigsFolder)
         for _, file in ipairs(files) do
             local name = file:match("([^/\\]+)%.json$")
             if name then table.insert(names, name) end
@@ -286,7 +305,6 @@ local Window = ANUI:CreateWindow({
 getgenv().ANUI_Window = Window
 
 -- [UI POLISH: Fix Icon Scaling]
--- [UI POLISH: Fix Icon Scaling]
 task.spawn(function()
     local attempts = 0
     while attempts < 20 do
@@ -296,25 +314,21 @@ task.spawn(function()
         local function FixIcon(root)
             if not root then return end
             for _, img in ipairs(root:GetDescendants()) do
-                -- Check for Icon by Name or Image ID snippet
                 if img:IsA("ImageLabel") then
-                    if (img.Name == "Icon" or img.Name == "Logo" or (img.Image and img.Image:find("120742610207737"))) then
-                        img.ScaleType = Enum.ScaleType.Crop -- Force fill
+                     if (img.Name == "Icon" or img.Name == "Logo" or (img.Image and img.Image:find("120742610207737"))) then
+                        img.ScaleType = Enum.ScaleType.Crop 
                         img.BackgroundTransparency = 1 
                         img.BackgroundColor3 = Color3.new(0,0,0)
-                        -- If it has a UICorner, ensure it's circular
+                        img.Size = UDim2.new(1, 0, 1, 0) -- FORCE SIZE
+                        -- Ensure Parent (Circle) clips descendants if needed, but usually icon fits.
                         local corner = img:FindFirstChildOfClass("UICorner")
                         if not corner then
-                             local c = Instance.new("UICorner", img)
-                             c.CornerRadius = UDim.new(1, 0)
-                        else
-                             corner.CornerRadius = UDim.new(1, 0)
-                        end
+                             local c = Instance.new("UICorner", img); c.CornerRadius = UDim.new(1, 0)
+                        else corner.CornerRadius = UDim.new(1, 0) end
                     end
                 end
             end
         end
-        
         FixIcon(game:GetService("CoreGui"):FindFirstChild("Nebublox"))
         FixIcon(game:GetService("CoreGui"):FindFirstChild("ANUI"))
         FixIcon(player.PlayerGui:FindFirstChild("Nebublox"))
@@ -361,14 +375,20 @@ local AboutSection = MainTab:Section({ Title = "Nebublox Information", Icon = "i
 AboutSection:Paragraph({
     Title = "Nebublox System Info",
     Content = [[
-[SYSTEM]
-Version: v4.2 (Stable)
+[SYSTEM INTEGRITY]
+Version: v5.0 (Cumulative Fix)
 Developer: Lil Nug of Wisdom
 Interface: ANUI v3
 
-[TARGET]
+[TARGET CONFIGURATION]
 Game: Anime Storm Simulator 2
-Updated: 02/08/2026 (v4.2)
+Updated: 02/08/2026 (v5.0)
+
+[NOTES]
+- Config Manager: Debugged
+- Icon: Scaled
+- Invasion: Debug Button Added
+- Hatch: Visual Overlay Added
 ]]
 })
 
@@ -684,6 +704,19 @@ BossSection:Toggle({ Title = "Auto World Boss Rush ( Cursed World)", Value = fal
 
 local InvSection = GamemodesTab:Section({ Title = "Invasion", Icon = "shield", Opened = true })
 InvSection:Toggle({ Title = "Auto Invasion (Slayer World)", Value = false, Callback = function(s) Flags.AutoInvasionStart = s end })
+InvSection:Button({
+    Title = "Force Start Invasion (Debug)",
+    Callback = function()
+        local InvStart = Remotes.Invasion and Remotes.Invasion:FindFirstChild("InvasionStart")
+        if InvStart then
+            InvStart:FireServer("StartUi", "DemonSlayerInvasion")
+            ANUI:Notify({Title = "Debug", Content = "Fired StartUi -> DemonSlayerInvasion", Icon = "zap", Duration = 3})
+            print("[Nebublox Debug] Force Start Invasion Fired")
+        else
+            ANUI:Notify({Title = "Error", Content = "Remote Not Found!", Icon = "alert-triangle", Duration = 3})
+        end
+    end
+})
 
 -- [TAB 4: GACHA (Gacha Only)]
 local GachaTab = Window:Tab({ Title = "Gacha", Icon = "gift" })
@@ -989,7 +1022,6 @@ local function GetSmartTarget()
 
     local function CheckMob(mob)
         if mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 and mob:FindFirstChild("HumanoidRootPart") then
-            -- Exclude self/pets if necessary (usually they are in different folders)
             local rootPart = mob.HumanoidRootPart
             local dist = (rootPart.Position - myRoot.Position).Magnitude
             if dist < shortestDist then
@@ -997,6 +1029,14 @@ local function GetSmartTarget()
                 bestTarget = mob
             end
         end
+    end
+
+    -- STICKY TARGET LOGIC (Prevents Jitter)
+    local current = getgenv().NebuBlox_CurrentTarget
+    if current and current.Parent and current:FindFirstChild("Humanoid") and current.Humanoid.Health > 0 and current:FindFirstChild("HumanoidRootPart") then
+        local dist = (current.HumanoidRootPart.Position - myRoot.Position).Magnitude
+        -- If current target is within 150 studs, keep it!
+        if dist < 150 then return current end
     end
 
     -- PRIORITY 1: TIME TRIAL (Highest)
@@ -1155,18 +1195,57 @@ task.spawn(function()
 end)
 
 -- AUTO HATCH LOOP
+local HatchOverlay = nil
+local function UpdateHatchUI(text)
+    if not HatchOverlay then
+        pcall(function()
+            local gui = Instance.new("ScreenGui")
+            gui.Name = "NebubloxHatchUI"
+            if getgenv().NebuBlox_Running then gui.Parent = game:GetService("CoreGui") end
+            local label = Instance.new("TextLabel")
+            label.Name = "Status"
+            label.Size = UDim2.new(0, 220, 0, 34)
+            label.Position = UDim2.new(0.5, -110, 0.88, 0) 
+            label.BackgroundColor3 = Color3.fromRGB(30,30,30)
+            label.BackgroundTransparency = 0.3
+            label.TextColor3 = Color3.new(1,1,1)
+            label.Font = Enum.Font.GothamBold
+            label.TextSize = 14
+            label.Text = ""
+            label.Parent = gui
+            Instance.new("UICorner", label).CornerRadius = UDim.new(0, 8)
+            Instance.new("UIStroke", label).Color = Color3.fromRGB(0, 200, 255)
+            HatchOverlay = gui
+        end)
+    end
+    
+    if HatchOverlay and HatchOverlay:FindFirstChild("Status") then
+        if text then
+            HatchOverlay.Enabled = true
+            HatchOverlay.Status.Text = text
+        else
+            HatchOverlay.Enabled = false
+        end
+    end
+end
+
 task.spawn(function()
     while task.wait(0.5) do
-        if getgenv().NebuBlox_SessionID ~= SessionID then break end
+        if getgenv().NebuBlox_SessionID ~= SessionID then 
+            if HatchOverlay then HatchOverlay:Destroy() end
+            break 
+        end
         
         local targetEgg = nil
-        if Flags.HatchOnePiece then targetEgg = Workspace.Eggs.OnePiece.OnePiece.EggModel.Egg end
-        if Flags.HatchNaruto then targetEgg = Workspace.Eggs.Naruto.Naruto.EggModel:FindFirstChild("Egeg") or Workspace.Eggs.Naruto.Naruto.EggModel:FindFirstChild("Egg") end
-        if Flags.HatchJJK then targetEgg = Workspace.Eggs.Jjk.Jjk.EggModel.Egg end
-        if Flags.HatchSlayer then targetEgg = Workspace.Eggs.DemonSlayer.DemonSlayer.EggModel.Egg end
-        if Flags.HatchDBZ then targetEgg = Workspace.Eggs.Dbz.Dbz.EggModel.Egg end
+        local eggName = ""
+        if Flags.HatchOnePiece then targetEgg = Workspace.Eggs.OnePiece.OnePiece.EggModel.Egg; eggName = "One Piece" end
+        if Flags.HatchNaruto then targetEgg = Workspace.Eggs.Naruto.Naruto.EggModel:FindFirstChild("Egeg") or Workspace.Eggs.Naruto.Naruto.EggModel:FindFirstChild("Egg"); eggName = "Naruto" end
+        if Flags.HatchJJK then targetEgg = Workspace.Eggs.Jjk.Jjk.EggModel.Egg; eggName = "JJK" end
+        if Flags.HatchSlayer then targetEgg = Workspace.Eggs.DemonSlayer.DemonSlayer.EggModel.Egg; eggName = "Demon Slayer" end
+        if Flags.HatchDBZ then targetEgg = Workspace.Eggs.Dbz.Dbz.EggModel.Egg; eggName = "Dragon Ball" end
         
         if targetEgg then
+            UpdateHatchUI("Hatching: " .. eggName)
             -- Teleport close to egg
             pcall(function()
                 if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -1179,6 +1258,8 @@ task.spawn(function()
                     EggRemote:FireServer("AutoHatch")
                 end
             end)
+        else
+            UpdateHatchUI(nil)
         end
     end
 end)
@@ -1476,4 +1557,4 @@ task.spawn(function()
     end)
 end)
 
-ANUI:Notify({Title = "Nebublox", Content = "Loaded v4.2 (Crash Fix)", Icon = "check", Duration = 5})
+ANUI:Notify({Title = "Nebublox", Content = "Loaded v5.0 (Final Fixes)", Icon = "check", Duration = 5})
