@@ -336,12 +336,15 @@ local AboutSection = MainTab:Section({ Title = "Welcome!", Icon = "smile", Opene
 
 AboutSection:Paragraph({
     Title = "Join the community",
-    Content = [[Join our Discord server.
+    Content = [[
+           Join our Discord server!
 
-Drop your concepts in #dark-visions
-Request a #forbidden-script
+        Drop your concepts in #dark-visions
+        Request a #forbidden-script
 
-https://discord.gg/nebublox]]
+        https://discord.gg/nebublox
+    ]],
+    Icon = "message-circle"
 })
 
 -- [TAB 2: FARM (SMART FARM)]
@@ -357,6 +360,155 @@ FarmSection:Toggle({
         if not state then getgenv().NebuBlox_CurrentTarget = nil end
     end
 })
+
+-- [CUSTOM ENEMY SELECTOR UI]
+local function CreateEmbeddedSelector(parent)
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "EnemySelectorFrame"
+    MainFrame.Size = UDim2.new(1, -10, 0, 250)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Parent = parent
+    
+    local UICorner = Instance.new("UICorner"); UICorner.CornerRadius = UDim.new(0, 8); UICorner.Parent = MainFrame
+    
+    local Header = Instance.new("TextLabel")
+    Header.Size = UDim2.new(1, 0, 0, 35)
+    Header.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    Header.Text = "  Multi-Target Selector"
+    Header.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Header.TextXAlignment = Enum.TextXAlignment.Left
+    Header.Font = Enum.Font.GothamBold
+    Header.TextSize = 14
+    Header.Parent = MainFrame
+    Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 8)
+
+    local StatusLabel = Instance.new("TextLabel")
+    StatusLabel.Size = UDim2.new(1, -10, 0, 20)
+    StatusLabel.Position = UDim2.new(0, 5, 0, 38)
+    StatusLabel.BackgroundTransparency = 1
+    StatusLabel.Text = "Status: Attack All / Nearest"
+    StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+    StatusLabel.TextSize = 11
+    StatusLabel.Font = Enum.Font.Gotham
+    StatusLabel.Parent = MainFrame
+
+    local ScrollFrame = Instance.new("ScrollingFrame")
+    ScrollFrame.Size = UDim2.new(1, -10, 1, -65)
+    ScrollFrame.Position = UDim2.new(0, 5, 0, 60)
+    ScrollFrame.BackgroundTransparency = 1
+    ScrollFrame.BorderSizePixel = 0
+    ScrollFrame.ScrollBarThickness = 4
+    ScrollFrame.Parent = MainFrame
+    
+    local ListLayout = Instance.new("UIListLayout")
+    ListLayout.SortOrder = Enum.SortOrder.Name
+    ListLayout.Padding = UDim.new(0, 4)
+    ListLayout.Parent = ScrollFrame
+
+    local function UpdateStatus()
+        local count = 0
+        for _ in pairs(SelectedEnemies) do count = count + 1 end
+        if count == 0 then StatusLabel.Text = "Mode: Nearest Enemy (No selection)"
+        else StatusLabel.Text = "Mode: Targeting " .. count .. " selected enemies" end
+    end
+
+    local function RefreshList()
+        for _, c in pairs(ScrollFrame:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
+        
+        local seen = {}
+        local names = {}
+        
+        local folders = {
+            Workspace:FindFirstChild("Npc"),
+            Workspace:FindFirstChild("TrialRoomNpc"),
+            Workspace:FindFirstChild("InvasionNpc")
+        }
+        
+        for _, folder in ipairs(folders) do
+            if folder then
+                for _, obj in ipairs(folder:GetDescendants()) do
+                    if obj:IsA("Humanoid") and obj.Parent then
+                        local mob = obj.Parent
+                        local name = mob.Name
+                        local bb = mob:FindFirstChild("Head") and mob.Head:FindFirstChild("NpcBillboard")
+                        local disp = bb and bb:FindFirstChild("NpcName") and bb.NpcName.Text
+                        if disp and disp ~= "" then name = disp end
+                        
+                        if name ~= "Dummy" and name ~= player.Name and not seen[name] then
+                            seen[name] = true
+                            table.insert(names, name)
+                        end
+                    end
+                end
+            end
+        end
+        
+        table.sort(names)
+        
+        for _, name in ipairs(names) do
+            local btn = Instance.new("TextButton")
+            btn.Name = name
+            btn.Size = UDim2.new(1, -4, 0, 25)
+            btn.BackgroundColor3 = SelectedEnemies[name] and Color3.fromRGB(45, 140, 220) or Color3.fromRGB(45, 45, 50)
+            btn.Text = name
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.Font = Enum.Font.Gotham
+            btn.TextSize = 12
+            btn.Parent = ScrollFrame
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+            
+            btn.MouseButton1Click:Connect(function()
+                if SelectedEnemies[name] then
+                    SelectedEnemies[name] = nil
+                    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+                else
+                    SelectedEnemies[name] = true
+                    btn.BackgroundColor3 = Color3.fromRGB(45, 140, 220)
+                end
+                UpdateStatus()
+                getgenv().NebuBlox_CurrentTarget = nil 
+            end)
+        end
+        ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y)
+    end
+    
+    task.spawn(RefreshList)
+    
+    local RefBtn = Instance.new("TextButton")
+    RefBtn.Size = UDim2.new(0, 60, 0, 20)
+    RefBtn.Position = UDim2.new(1, -65, 0, 7)
+    RefBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    RefBtn.Text = "Refresh"
+    RefBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    RefBtn.TextSize = 10
+    RefBtn.Parent = MainFrame
+    Instance.new("UICorner", RefBtn).CornerRadius = UDim.new(0, 4)
+    RefBtn.MouseButton1Click:Connect(RefreshList)
+    
+    return MainFrame
+end
+
+local TargetSection = TeleportTab:Section({ Title = "Target List", Icon = "list", Opened = true })
+local Placeholder = TargetSection:Paragraph({ Title = "Loading UI...", Content = "" })
+task.spawn(function()
+    task.wait(0.5)
+    local function FindAndInject(root)
+        if not root then return end
+        for _, obj in ipairs(root:GetDescendants()) do
+            if obj:IsA("TextLabel") and obj.Text == "Loading UI..." then
+                local paragraph = obj.Parent
+                local section = paragraph and paragraph.Parent
+                if section then
+                    CreateEmbeddedSelector(section)
+                    paragraph:Destroy()
+                    return true
+                end
+            end
+        end
+    end
+    if not FindAndInject(game:GetService("CoreGui")) then FindAndInject(player.PlayerGui) end
+end)
 
 
 
@@ -457,136 +609,75 @@ local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 local ConfigSection = SettingsTab:Section({ Title = "Configuration Manager", Icon = "folder", Opened = true })
 ConfigSection:Input({ Title = "Config Name", Placeholder = "Enter config name...", Callback = function(text) ConfigNameInput = text end })
 
--- [CUSTOM CONFIG SELECTOR]
-local function CreateConfigSelector(parent)
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Name = "ConfigSelectorFrame"
-    MainFrame.Size = UDim2.new(1, -10, 0, 230) -- Increased Height
-    MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-    MainFrame.BorderSizePixel = 0
-    MainFrame.Parent = parent
-    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+-- [CONFIG DROPDOWN SYSTEM]
+local ConfigDropdown
+local SelectedConfig = ""
 
-    local Header = Instance.new("TextLabel")
-    Header.Size = UDim2.new(1, 0, 0, 30)
-    Header.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    Header.Text = "📁 Saved Configs"
-    Header.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Header.TextSize = 13
-    Header.Font = Enum.Font.GothamBold
-    Header.Parent = MainFrame
-    Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 8)
-
-    local ScrollFrame = Instance.new("ScrollingFrame")
-    ScrollFrame.Size = UDim2.new(1, -10, 1, -85) -- Adjusted for buttons
-    ScrollFrame.Position = UDim2.new(0, 5, 0, 35)
-    ScrollFrame.BackgroundTransparency = 1
-    ScrollFrame.BorderSizePixel = 0
-    ScrollFrame.ScrollBarThickness = 4
-    ScrollFrame.Parent = MainFrame
-    
-    local ListLayout = Instance.new("UIListLayout"); ListLayout.SortOrder = Enum.SortOrder.Name; ListLayout.Padding = UDim.new(0, 4); ListLayout.Parent = ScrollFrame
-
-    local function RefreshConfigList()
-        for _, c in pairs(ScrollFrame:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
-        local configs = ConfigSystem.GetConfigs()
-        if #configs == 0 then
-            local noConfigs = Instance.new("TextLabel")
-            noConfigs.Name = "NoConfigs"; noConfigs.Size = UDim2.new(1, -10, 0, 28); noConfigs.BackgroundTransparency = 1
-            noConfigs.Text = "No configs saved yet"; noConfigs.TextColor3 = Color3.fromRGB(120, 120, 120); noConfigs.TextSize = 12; noConfigs.Font = Enum.Font.Gotham; noConfigs.Parent = ScrollFrame
-        else
-            for _, name in ipairs(configs) do
-                local btn = Instance.new("TextButton")
-                btn.Name = name; btn.Size = UDim2.new(1, -10, 0, 28)
-                btn.BackgroundColor3 = (ConfigNameInput == name) and Color3.fromRGB(80, 150, 80) or Color3.fromRGB(50, 50, 60)
-                btn.Text = "  📄 " .. name; btn.TextColor3 = Color3.fromRGB(220, 220, 220); btn.TextSize = 12; btn.Font = Enum.Font.Gotham; btn.TextXAlignment = Enum.TextXAlignment.Left; btn.Parent = ScrollFrame
-                Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-                btn.MouseButton1Click:Connect(function()
-                    ConfigNameInput = name
-                    for _, b in pairs(ScrollFrame:GetChildren()) do if b:IsA("TextButton") then b.BackgroundColor3 = (b.Name == name) and Color3.fromRGB(80, 150, 80) or Color3.fromRGB(50, 50, 60) end end
-                    ANUI:Notify({Title = "Selected", Content = name, Icon = "check", Duration = 2})
-                end)
-            end
-        end
-        ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y + 5)
+local function UpdateConfigDropdown()
+    local list = ConfigSystem.GetConfigs()
+    if #list == 0 then list = {"None"} end
+    -- Attempt to refresh dropdown if library supports it
+    if ConfigDropdown and ConfigDropdown.Refresh then
+        ConfigDropdown:Refresh(list, true) 
     end
-    
-    -- Action Buttons Area
-    local ButtonFrame = Instance.new("Frame")
-    ButtonFrame.Size = UDim2.new(1, -10, 0, 40)
-    ButtonFrame.Position = UDim2.new(0, 5, 1, -45)
-    ButtonFrame.BackgroundTransparency = 1
-    ButtonFrame.Parent = MainFrame
-    
-    local UIGrid = Instance.new("UIGridLayout")
-    UIGrid.CellSize = UDim2.new(0.23, 0, 1, 0)
-    UIGrid.CellPadding = UDim2.new(0.02, 0, 0, 0)
-    UIGrid.Parent = ButtonFrame
-    
-    local function AddBtn(text, color, callback)
-        local b = Instance.new("TextButton")
-        b.Text = text
-        b.BackgroundColor3 = color
-        b.TextColor3 = Color3.new(1,1,1)
-        b.Font = Enum.Font.GothamBold
-        b.TextSize = 11
-        b.Parent = ButtonFrame
-        Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
-        b.MouseButton1Click:Connect(callback)
-    end
-    
-    AddBtn("SAVE", Color3.fromRGB(60, 160, 60), function()
-        if ConfigNameInput ~= "" then 
-            ConfigSystem.SaveConfig(ConfigNameInput)
-            RefreshConfigList()
-            ANUI:Notify({Title = "Saved", Content = ConfigNameInput, Icon = "save", Duration = 2})
-        else 
-            ANUI:Notify({Title = "Error", Content = "Enter name!", Icon = "alert-triangle", Duration = 2}) 
-        end
-    end)
-    
-    AddBtn("LOAD", Color3.fromRGB(60, 100, 200), function()
-        if ConfigNameInput ~= "" then 
-            ConfigSystem.LoadConfig(ConfigNameInput)
-        else 
-            ANUI:Notify({Title = "Error", Content = "Select config!", Icon = "alert-triangle", Duration = 2}) 
-        end
-    end)
-    
-    AddBtn("DEL", Color3.fromRGB(200, 60, 60), function()
-        if ConfigNameInput ~= "" then 
-            ConfigSystem.DeleteConfig(ConfigNameInput)
-            RefreshConfigList()
-            ANUI:Notify({Title = "Deleted", Content = ConfigNameInput, Icon = "trash", Duration = 2})
-        else 
-            ANUI:Notify({Title = "Error", Content = "Select config!", Icon = "alert-triangle", Duration = 2}) 
-        end
-    end)
-    
-    AddBtn("REFRESH", Color3.fromRGB(100, 100, 100), function()
-         RefreshConfigList()
-         ANUI:Notify({Title = "Refreshed", Content = "Config List", Icon = "refresh", Duration = 1})
-    end)
-
-    RefreshConfigList()
-    return RefreshConfigList
 end
 
-task.spawn(function()
-    task.wait(2)
-    local function FindSettingsSection(root)
-        if not root then return nil end
-        for _, obj in ipairs(root:GetDescendants()) do
-            if obj:IsA("TextLabel") and obj.Text == "Configuration Manager" then
-                local section = obj.Parent and obj.Parent.Parent
-                if section then return section end
-            end
-        end
-        return nil
+ConfigSection:Button({
+    Title = "Refresh Config List",
+    Callback = function() 
+        UpdateConfigDropdown()
+        ANUI:Notify({Title = "Configs", Content = "List Refreshed", Icon = "refresh", Duration = 2}) 
     end
-    local section = FindSettingsSection(game:GetService("CoreGui")) or FindSettingsSection(player.PlayerGui)
-    if section then getgenv().RefreshConfigSelector = CreateConfigSelector(section) end
-end)
+})
+
+ConfigDropdown = ConfigSection:Dropdown({
+    Title = "Select Config",
+    Multi = false,
+    Options = ConfigSystem.GetConfigs(),
+    Callback = function(val)
+        if val ~= "None" then
+            SelectedConfig = val
+            ConfigNameInput = val -- Optional: Set name input to match selected
+            ANUI:Notify({Title = "Selected", Content = val, Icon = "check", Duration = 2})
+        end
+    end
+})
+
+ConfigSection:Button({
+    Title = "Load Selected Config",
+    Callback = function()
+        if SelectedConfig ~= "" and SelectedConfig ~= "None" then
+            ConfigSystem.LoadConfig(SelectedConfig)
+        else
+            ANUI:Notify({Title = "Error", Content = "Select a config first!", Icon = "alert-triangle", Duration = 3})
+        end
+    end
+})
+
+ConfigSection:Button({
+    Title = "Save Config (Uses Name Above)",
+    Callback = function()
+        if ConfigNameInput ~= "" then
+            ConfigSystem.SaveConfig(ConfigNameInput)
+            UpdateConfigDropdown()
+        else
+            ANUI:Notify({Title = "Error", Content = "Enter a name above!", Icon = "edit", Duration = 3})
+        end
+    end
+})
+
+ConfigSection:Button({
+    Title = "Delete Selected Config",
+    Callback = function()
+        if SelectedConfig ~= "" and SelectedConfig ~= "None" then
+            ConfigSystem.DeleteConfig(SelectedConfig)
+            UpdateConfigDropdown()
+            SelectedConfig = ""
+        else
+            ANUI:Notify({Title = "Error", Content = "Select a config first!", Icon = "alert-triangle", Duration = 3})
+        end
+    end
+})
 
 
 ConfigSection:Toggle({ Title = "Autoload on Startup", Value = getgenv().NebubloxSettings.AutoLoad, Callback = function(s) getgenv().NebubloxSettings.AutoLoad = s end })
@@ -615,6 +706,20 @@ local function GetTarget()
     local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not myRoot then return nil end
 
+    local whitelistActive = false
+    for _ in pairs(SelectedEnemies) do whitelistActive = true; break end
+
+    -- Sticky Logic
+    local current = getgenv().NebuBlox_CurrentTarget
+    if current and current.Parent and current:FindFirstChild("Humanoid") and current.Humanoid.Health > 0 then
+        if whitelistActive and not SelectedEnemies[current.Name] then
+            -- Target no longer in whitelist, drop it
+        else
+            -- Stick to target if close
+            if (current.HumanoidRootPart.Position - myRoot.Position).Magnitude < 300 then return current end
+        end
+    end
+
     local best = nil
     local shortest = math.huge
 
@@ -623,6 +728,7 @@ local function GetTarget()
         for _, v in ipairs(folder:GetDescendants()) do
             if v:IsA("Humanoid") and v.Health > 0 and v.Parent and v.Parent:FindFirstChild("HumanoidRootPart") then
                 local mob = v.Parent
+                if whitelistActive and not SelectedEnemies[mob.Name] then continue end
                 local d = (mob.HumanoidRootPart.Position - myRoot.Position).Magnitude
                 if d < shortest then
                     shortest = d
