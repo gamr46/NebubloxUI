@@ -45,7 +45,31 @@ getgenv().NebuBlox_Running = true
 
 print("[Nebublox] New session started:", SessionID)
 
-local ANUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/ANHub-Script/ANUI/refs/heads/main/dist/main.lua"))()
+
+-- [ROBUST LOADER]
+local function LoadScript(url)
+    -- [DEV] Try Local File First (for testing updates)
+    if isfile and isfile("ANUI_source.lua") then return readfile("ANUI_source.lua") end
+    if isfile and isfile("ANUI-Library/games/ANUI_source.lua") then return readfile("ANUI-Library/games/ANUI_source.lua") end
+
+    local success, result = pcall(function() return game:HttpGet(url) end)
+    if not success then
+        success, result = pcall(function() return HttpGet(url) end) -- Try global
+    end
+    if not success then
+        -- Fallback to request
+        local req = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+        if req then
+            local response = req({Url = url, Method = "GET"})
+            if response.Success or response.StatusCode == 200 then
+                return response.Body
+            end
+        end
+    end
+    return result
+end
+
+local ANUI = loadstring(LoadScript("https://raw.githubusercontent.com/ANHub-Script/ANUI/refs/heads/main/dist/main.lua"))()
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -54,6 +78,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
+
+-- // 0.5 SETTINGS INIT //
+if not getgenv().NebubloxSettings then
+    getgenv().NebubloxSettings = {
+        AutoLoad = true,
+        LastConfig = "",
+        AntiAfkEnabled = false
+    }
+end
 
 -- // 1. CONFIGURATION //
 local Flags = {
@@ -91,9 +124,10 @@ local LastTargetedTime = {}
 local SavedCFrame = nil
 local PerformReturn = false 
 local SelectedReturnMap = "Same Spot"
-local LastTrialJoinTime = math.huge 
+local LastTrialJoinTime = 0 
 local InInvasion = false 
 local LastInvasionCheck = 0
+local LastInvasionJoinTime = 0
 getgenv().TrialSuccess = false
 local SavedReturnMap = "Same Spot"
 
@@ -114,6 +148,7 @@ pcall(function()
     if not isfolder(FolderName) then makefolder(FolderName) end
     if not isfolder(ConfigsFolder) then makefolder(ConfigsFolder) end
 end)
+local API_URL_BASE = "https://darkmatterv1.onrender.com"
 
 local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
@@ -267,7 +302,7 @@ local Window = ANUI:CreateWindow({
     Author = "He Who Remains Lil'Nug",
     Folder = "Nebublox",
     Icon = "rbxthumb://type=Asset&id=120742610207737&w=150&h=150",
-    IconSize = 64,
+    IconSize = 63,
     Theme = "Dark", 
 })
 getgenv().ANUI_Window = Window
@@ -286,7 +321,7 @@ task.spawn(function()
                         img.ScaleType = Enum.ScaleType.Crop 
                         img.BackgroundTransparency = 1 
                         img.BackgroundColor3 = Color3.new(0,0,0)
-                        img.Size = UDim2.new(1, 0, 1, 0)
+                        img.Size = UDim2.new(3, 0, 3, 0)
                         local corner = img:FindFirstChildOfClass("UICorner")
                         if not corner then
                              local c = Instance.new("UICorner", img); c.CornerRadius = UDim.new(1, 0)
@@ -302,6 +337,7 @@ task.spawn(function()
 end)
 
 -- [TAB 1: ABOUT]
+local TrialTab, GamemodesTab, GachaTab -- Forward declare for Key System
 local MainTab = Window:Tab({ Title = "About", Icon = "info" })
 local BannerSection = MainTab:Section({ Title = "", Icon = "", Opened = true })
 BannerSection:Paragraph({ Title = "Loading Banner...", Content = "" })
@@ -317,11 +353,11 @@ task.spawn(function()
                 if section then
                     local frame = Instance.new("ImageLabel")
                     frame.Name = "Banner"
-                    frame.Size = UDim2.new(1, -10, 0, 120)
+                    frame.Size = UDim2.new(1, 0, 0, 300)
                     frame.Position = paragraph.Position
                     frame.BackgroundTransparency = 1
                     frame.Image = imgId
-                    frame.ScaleType = Enum.ScaleType.Fit
+                    frame.ScaleType = Enum.ScaleType.Crop
                     frame.Parent = section
                     paragraph:Destroy()
                     return true
@@ -332,30 +368,95 @@ task.spawn(function()
     if not FindAndInjectImage(game:GetService("CoreGui")) then FindAndInjectImage(player.PlayerGui) end
 end)
 
-local AboutSection = MainTab:Section({ Title = "Nebublox", Icon = "star", Opened = true })
+-- // [TAB 1: ABOUT & KEY SYSTEM] //
+local AboutSection = MainTab:Section({ Title = "Authentication", Icon = "shield", Opened = true })
+
+-- Welcome Message
+-- Community Message
 AboutSection:Paragraph({
-    Title = "Welcome to Nebublox",
-    Content = [[
-// SYSTEM INFORMATION
-
-ARCHITECTS
-
-Core & Logic: Lil Nug of Wisdom
-Visual Interface: ANUI
-
-CURRENT PARAMETERS
-
-Patch Date: 02/08/26
-Target Reality: Anime Storm Simulator 2
-Origin: Roblox Community Group
-
-TRANSMISSION
-Seeking to expand the void? Access our frequency.
-Share your #dark-visions and propose the next #forbidden-script.
-
-[LINK] DISCORD: discord.gg/nebublox
-]]
+    Title = "Thank You for using Nebublox! ❤️",
+    Content = "We appreciate your support! \nThis script features a powerful Auto Farm (Free) and specialized modes for Premium users.\n\nJoin our Discord for keys, updates, and a great community!"
 })
+
+-- Key System Logic
+local UserKeyInput = ""
+
+-- Side-by-Side Input Group
+local InputGroup = AboutSection:Group({ Title = "" }) -- Empty title for layout only
+
+InputGroup:Input({
+    Title = "Premium Key",
+    Placeholder = "Enter Key...",
+    Width = 200, -- Smaller width to fit button
+    Callback = function(text)
+        UserKeyInput = text
+    end
+})
+
+InputGroup:Button({
+    Title = "Verify",
+    Width = 100, -- Small button next to input
+    Callback = function()
+        -- 1. Input Validation
+        if UserKeyInput == "" then
+            ANUI:Notify({Title = "Error", Content = "Please enter a key!", Icon = "alert-triangle", Duration = 3})
+            return
+        end
+        
+        -- 2. Inform User
+        ANUI:Notify({Title = "Verifying...", Content = "Checking key...", Icon = "loader", Duration = 2})
+
+        -- 3. API Request
+        local success, result = pcall(function()
+            local url = API_URL_BASE .. "/verify_key?key=" .. UserKeyInput .. "&hwid=" .. game:GetService("RbxAnalyticsService"):GetClientId()
+            local response = game:GetService("HttpService"):GetAsync(url)
+            return game:GetService("HttpService"):JSONDecode(response)
+        end)
+
+        -- 4. Handle Response
+        if success then
+            local data = result
+            if data and data.valid then
+                -- [SUCCESS]
+                ANUI:Notify({Title = "Access Granted", Content = "Welcome, " .. tostring(data.username or "User"), Icon = "check", Duration = 5})
+                
+                -- >> UNLOCK FEATURES <<
+                if TrialTab then TrialTab:Unlock() end
+                if GamemodesTab then GamemodesTab:Unlock() end
+                if GachaTab then GachaTab:Unlock() end
+                
+            else
+                -- [INVALID OR EXPIRED KEY]
+                ANUI:Notify({Title = "Access Denied", Content = data.message or "Invalid Key", Icon = "x", Duration = 3})
+            end
+        else
+            -- [API ERROR]
+            warn("API Error:", result)
+            ANUI:Notify({Title = "Connection Error", Content = "Failed to reach server.", Icon = "wifi-off", Duration = 3})
+        end
+    end
+})
+
+AboutSection:Button({
+    Title = "- Get Premium Key / Discord",
+    Callback = function()
+        setclipboard("https://discord.gg/nebublox")
+        ANUI:Notify({Title = "Discord", Content = "Invite copied to clipboard!", Icon = "copy", Duration = 3})
+    end
+})
+
+-- [MAP CONFIGURATION]
+local MapDisplayToInternal = {
+    ["Z World"] = "Dbz",
+    ["Cursed World"] = "Jjk",
+    ["Shinobi World"] = "Naruto",
+    ["Pirate World"] = "OnePiece",
+    ["Slayer World"] = "DemonSlayer"
+}
+local MapInternalToDisplay = {}
+for k, v in pairs(MapDisplayToInternal) do MapInternalToDisplay[v] = k end
+local MapOptions = {"Cursed World", "Pirate World", "Shinobi World", "Slayer World", "Z World"} 
+local function RefreshMapOptions() end
 
 -- [TAB 2: FARM (SMART FARM)]
 local TeleportTab = Window:Tab({ Title = "Farm", Icon = "map-pin" })
@@ -522,25 +623,56 @@ end)
 
 
 
--- [TAB 3: TRIAL]
-local TrialTab = Window:Tab({ Title = "Trial", Icon = "clock" })
+-- [TAB 3: TRIAL (TIME TRIAL)]
+TrialTab = Window:Tab({ Title = "Trial 👑", Icon = "clock", Locked = true })
+
+-- Easy Trial Section (Moved)
 local TrialSection = TrialTab:Section({ Title = "Easy Time Trial", Icon = "play", Opened = true })
-TrialSection:Toggle({ Title = "Auto Join Trial", Value = false, Callback = function(s) 
-    Flags.AutoTrial = s
-    -- DO NOT set AutoTrialFarm - user only wants to join, not farm
+TrialSection:Toggle({ Title = "Auto Join Trial (Smart)", Value = false, Callback = function(s) 
+    Flags.AutoTrial = s; 
+    Flags.AutoTrialFarm = s
     if s and (not SavedCFrame or SavedCFrame == nil) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         SavedCFrame = player.Character.HumanoidRootPart.CFrame
         ANUI:Notify({Title = "Position Saved", Content = "Auto-saved current spot for return.", Icon = "pin", Duration = 3})
     end
 end })
+-- Return Toggle Renamed for Clarity
 TrialSection:Toggle({ Title = "Return After (Trial/Invasion)", Value = false, Callback = function(s) PerformReturn = s end })
 
+local MapDropdown = TrialSection:Dropdown({
+    Title = "Select Return Map",
+    Options = MapOptions,
+    Default = "Z World", -- Default to Z World (Dbz)
+    Callback = function(v) SelectedReturnMap = v end
+})
+
 TrialSection:Button({
-    Title = "Save Current Position (For Return)",
+    Title = "Refresh Map List",
+    Callback = function()
+        RefreshMapOptions()
+        if MapDropdown and MapDropdown.Refresh then
+            MapDropdown:Refresh(MapOptions) -- Attempt to refresh if supported
+        else
+            ANUI:Notify({Title = "Maps", Content = "Refreshed internally. Re-open UI to see changes if blocked.", Icon = "refresh", Duration = 3})
+        end
+    end
+})
+
+TrialSection:Button({
+    Title = "Save Current Position (For Selected Map)",
     Callback = function()
         local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
         if root then
+            -- We assume user is IN the map they want to save for?
+            -- Or we detect map?
+            -- Simple logic: Provide override.
+            -- If user saves position, we store it.
+            -- When returning, if Selected Map matches the map associated with this position?
+            -- We don't track map association strictly.
+            -- But user said "user should choose the map they saved their position in".
+            -- I'll define SavedCFrame as GLOBAL value.
             SavedCFrame = root.CFrame
+            -- We also try to guess the map name to be smart
             local currentMap = "Unknown"
             local maps = Workspace:FindFirstChild("Maps")
             if maps then
@@ -553,8 +685,11 @@ TrialSection:Button({
                     end
                 end
             end
+            -- Store map
             getgenv().SavedMapInternalName = currentMap
-            ANUI:Notify({Title = "Position Saved", Content = "Saved for: " .. currentMap, Icon = "check", Duration = 3})
+            
+            local disp = MapInternalToDisplay[currentMap] or currentMap
+            ANUI:Notify({Title = "Position Saved", Content = "Saved for: " .. disp, Icon = "check", Duration = 3})
         else
             ANUI:Notify({Title = "Error", Content = "Character not found!", Icon = "alert-triangle", Duration = 3})
         end
@@ -564,10 +699,13 @@ TrialSection:Button({
 TrialSection:Toggle({ Title = "Auto Drop Potion (On Start)", Value = false, Callback = function(s) Flags.AutoDropPotion = s end })
 TrialSection:Toggle({ Title = "Attack ALL (Trial Only)", Value = false, Callback = function(s) Flags.TrialAttackAll = s end })
 
+-- Trial Upgrades Section (New)
+
+
 
 
 -- [TAB 4: GAMEMODES (SWAPPED LOGIC)]
-local GamemodesTab = Window:Tab({ Title = "Gamemodes", Icon = "swords" })
+GamemodesTab = Window:Tab({ Title = "Gamemodes 👑", Icon = "swords", Locked = true })
 
 local BossSection = GamemodesTab:Section({ Title = "World Boss Rushes", Icon = "skull", Opened = true })
 BossSection:Toggle({ Title = "Auto World Boss Rush ( Z World)", Value = false, Callback = function(s) Flags.BossRushDBZ = s end })
@@ -578,7 +716,8 @@ InvSection:Toggle({ Title = "Auto Invasion (Slayer World)", Value = false, Callb
 
 
 -- [TAB 4: GACHA]
-local GachaTab = Window:Tab({ Title = "Gacha", Icon = "gift" })
+-- [TAB 4: GACHA]
+GachaTab = Window:Tab({ Title = "Gacha 👑", Icon = "gift", Locked = true })
 local OPSection = GachaTab:Section({ Title = "One Piece", Icon = "anchor" })
 OPSection:Toggle({ Title = "Auto Roll Fruit", Value = false, Callback = function(s) Flags.OnePieceFruit = s end })
 OPSection:Toggle({ Title = "Auto Roll Crew", Value = false, Callback = function(s) Flags.OnePieceCrew = s end })
@@ -604,7 +743,7 @@ SlayerSection:Toggle({ Title = "Auto Roll Art", Value = false, Callback = functi
 -- [TAB 5: PROGRESSION]
 local MiscTab = Window:Tab({ Title = "Progression", Icon = "chevrons-up" })
 local MiscSection = MiscTab:Section({ Title = "Progression", Icon = "chevrons-up", Opened = true })
-MiscSection:Toggle({ Title = "Auto Rebirth", Value = false, Callback = function(s) Flags.AutoRebirth = s end })
+MiscSection:Toggle({ Title = "Auto Rank up", Value = false, Callback = function(s) Flags.AutoRebirth = s end })
 MiscSection:Toggle({ Title = "Claim Timed Rewards", Value = false, Callback = function(s) Flags.AutoTimedRewards = s end })
 
 local UpgradeSection = MiscTab:Section({ Title = "Trial Upgrades", Icon = "trending-up" })
@@ -616,7 +755,36 @@ UpgradeSection:Toggle({ Title = "Auto Upgrade Walkspeed", Value = false, Callbac
 
 -- [TAB 6: SETTINGS]
 local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
+
+local SystemSection = SettingsTab:Section({ Title = "System", Icon = "power", Opened = true })
+SystemSection:Button({
+    Title = "Kill Script (Unload)",
+    Callback = function()
+        -- Break all loops
+        getgenv().NebuBlox_SessionID = 0 
+        getgenv().NebuBlox_Running = false
+        
+        -- Cleanup UI
+        if getgenv().ANUI_Window then 
+             pcall(function() getgenv().ANUI_Window:Destroy() end)
+        end
+        if Window then
+             pcall(function() Window:Destroy() end)
+        end
+        
+        -- Notify (if possible before destruction)
+        pcall(function() 
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "Nebublox",
+                Text = "Script Unloaded / Killed.",
+                Duration = 3
+            })
+        end)
+    end
+})
+
 local ConfigSection = SettingsTab:Section({ Title = "Configuration Manager", Icon = "folder", Opened = true })
+
 ConfigSection:Input({ Title = "Config Name", Placeholder = "Enter config name...", Callback = function(text) ConfigNameInput = text end })
 
 -- [CONFIG DROPDOWN SYSTEM]
@@ -632,14 +800,6 @@ local function UpdateConfigDropdown()
     end
 end
 
-ConfigSection:Button({
-    Title = "Refresh Config List",
-    Callback = function() 
-        UpdateConfigDropdown()
-        ANUI:Notify({Title = "Configs", Content = "List Refreshed", Icon = "refresh", Duration = 2}) 
-    end
-})
-
 ConfigDropdown = ConfigSection:Dropdown({
     Title = "Select Config",
     Multi = false,
@@ -654,10 +814,32 @@ ConfigDropdown = ConfigSection:Dropdown({
 })
 
 ConfigSection:Button({
-    Title = "Load Selected Config",
+    Title = "Refresh Config List",
+    Callback = function() 
+        UpdateConfigDropdown()
+        ANUI:Notify({Title = "Configs", Content = "List Refreshed", Icon = "refresh", Duration = 2}) 
+    end
+})
+
+ConfigSection:Button({
+    Title = "Save Config",
+    Callback = function()
+        if ConfigNameInput ~= "" then
+            ConfigSystem.SaveConfig(ConfigNameInput)
+            UpdateConfigDropdown()
+        else
+            ANUI:Notify({Title = "Error", Content = "Enter a name above!", Icon = "edit", Duration = 3})
+        end
+    end
+})
+
+ConfigSection:Button({
+    Title = "Autoload Config",
     Callback = function()
         if SelectedConfig ~= "" and SelectedConfig ~= "None" then
-            ConfigSystem.LoadConfig(SelectedConfig)
+            getgenv().NebubloxSettings.AutoLoad = true
+            getgenv().NebubloxSettings.LastConfig = SelectedConfig
+            ANUI:Notify({Title = "Autoload Set", Content = "Startup config: " .. SelectedConfig, Icon = "star", Duration = 3})
         else
             ANUI:Notify({Title = "Error", Content = "Select a config first!", Icon = "alert-triangle", Duration = 3})
         end
@@ -665,13 +847,12 @@ ConfigSection:Button({
 })
 
 ConfigSection:Button({
-    Title = "Save Config (Uses Name Above)",
+    Title = "Load Selected Config",
     Callback = function()
-        if ConfigNameInput ~= "" then
-            ConfigSystem.SaveConfig(ConfigNameInput)
-            UpdateConfigDropdown()
+        if SelectedConfig ~= "" and SelectedConfig ~= "None" then
+            ConfigSystem.LoadConfig(SelectedConfig)
         else
-            ANUI:Notify({Title = "Error", Content = "Enter a name above!", Icon = "edit", Duration = 3})
+            ANUI:Notify({Title = "Error", Content = "Select a config first!", Icon = "alert-triangle", Duration = 3})
         end
     end
 })
@@ -689,8 +870,6 @@ ConfigSection:Button({
     end
 })
 
-
-ConfigSection:Toggle({ Title = "Autoload on Startup", Value = getgenv().NebubloxSettings.AutoLoad, Callback = function(s) getgenv().NebubloxSettings.AutoLoad = s end })
 
 local PerfSection = SettingsTab:Section({ Title = "System Performance", Icon = "cpu", Opened = true })
 PerfSection:Toggle({ Title = "Anti-AFK / Anti-Kick", Value = getgenv().NebubloxSettings.AntiAfkEnabled, Callback = function(s) getgenv().NebubloxSettings.AntiAfkEnabled = s; ToggleAntiAFK(s) end })
@@ -712,7 +891,8 @@ local function CountLiveEnemies(folder)
     return count
 end
 
-local function GetTarget()
+-- [SMART TARGET FINDER - V8.3 (GAMEMODE FIX)]
+local function GetSmartTarget()
     local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not myRoot then return nil end
     if not player.Character:IsDescendantOf(Workspace) then return nil end
@@ -734,20 +914,29 @@ local function GetTarget()
         
         local isValid = false
         
-        local isFarmActive = Flags.SmartFarm or Flags.AutoTrialFarm or Flags.AutoInvasionStart or Flags.BossRushDBZ or Flags.BossRushJJK
-        
-        if isFarmActive and selectedCount > 0 then
-            local head = mob:FindFirstChild("Head")
-            local bb = head and head:FindFirstChild("NpcBillboard")
-            local disp = bb and bb:FindFirstChild("NpcName") and bb.NpcName.Text
-            if SelectedEnemies[mob.Name] or (disp and SelectedEnemies[disp]) then isValid = true end
-        elseif isFarmActive then
-            isValid = true
+        -- Priority Name Check (Boss Rush / Invasion)
+        if Flags.BossRushDBZ and mob.Name == "SsjRoseGoku" then isValid = true end
+        if Flags.BossRushJJK and mob.Name == "AdaptiveCurse" then isValid = true end
+        -- [INVASION LOGIC UPDATE]
+        -- Automatically target ALL enemies in InvasionNpc if mode is active
+        if Flags.AutoInvasionStart and mob:IsDescendantOf(Workspace:FindFirstChild("InvasionNpc")) then 
+            isValid = true 
         end
-        
-        -- Special override for Trial Attack All
-        if Flags.TrialAttackAll and mob:IsDescendantOf(Workspace:FindFirstChild("TrialRoomNpc")) then
-            isValid = true
+
+        if not isValid then
+            if Flags.SmartFarm and selectedCount > 0 then
+                local head = mob:FindFirstChild("Head")
+                local bb = head and head:FindFirstChild("NpcBillboard")
+                local disp = bb and bb:FindFirstChild("NpcName") and bb.NpcName.Text
+                if SelectedEnemies[mob.Name] or (disp and SelectedEnemies[disp]) then isValid = true end
+            elseif Flags.SmartFarm then
+                isValid = true
+            end
+            
+            -- Special override for Trial Attack All
+            if Flags.TrialAttackAll and mob:IsDescendantOf(Workspace:FindFirstChild("TrialRoomNpc")) then
+                isValid = true
+            end
         end
         
         if isValid then
@@ -766,48 +955,60 @@ local function GetTarget()
         if bestTarget then return bestTarget end
     end
 
-    -- 2. Scan Invasion & Boss Rush (Priority)
-    if Flags.SmartFarm or Flags.AutoInvasionStart or Flags.BossRushDBZ or Flags.BossRushJJK then 
-        local invF = Workspace:FindFirstChild("InvasionNpc")
-        if invF then for _, o in ipairs(invF:GetDescendants()) do CheckMob(o) end end
-        
-        local maps = Workspace:FindFirstChild("Maps")
-        if maps then
-            -- Demon Slayer Invasion
-            local dsInv = maps:FindFirstChild("DemonSlayerInvasion")
-            local dsSpawns = dsInv and dsInv:FindFirstChild("NpcSpawns")
-            if dsSpawns then for _, o in ipairs(dsSpawns:GetDescendants()) do CheckMob(o) end end
-
-            -- Boss Rush (DBZ)
-            if Flags.BossRushDBZ then
-                local brMap = maps:FindFirstChild("dbzBossRush")
-                if brMap then for _, o in ipairs(brMap:GetDescendants()) do CheckMob(o) end end
-            end
-            
-            -- Boss Rush (JJK)
-            if Flags.BossRushJJK then
-                local brMap = maps:FindFirstChild("JjkBossRush")
-                if brMap then for _, o in ipairs(brMap:GetDescendants()) do CheckMob(o) end end
-            end
-        end
-        
-        if bestTarget then 
-            local dist = (bestTarget.HumanoidRootPart.Position - myRoot.Position).Magnitude
-            if dist < 3000 then return bestTarget end
-        end
+    -- 2. Scan Boss Rush (Priority)
+    if Flags.BossRushDBZ then
+        local folder = Workspace:FindFirstChild("BossRushNpc") and Workspace.BossRushNpc:FindFirstChild("DbzBossRush")
+        if folder then for _, o in ipairs(folder:GetDescendants()) do CheckMob(o) end end
+        if bestTarget then return bestTarget end
+    end
+    if Flags.BossRushJJK then
+        local folder = Workspace:FindFirstChild("BossRushNpc") and Workspace.BossRushNpc:FindFirstChild("JjkBossRush")
+        if folder then for _, o in ipairs(folder:GetDescendants()) do CheckMob(o) end end
+        if bestTarget then return bestTarget end
     end
 
-    -- 3. Scan Generic Maps
+    -- 3. Scan Invasion (Priority)
+    if Flags.SmartFarm or Flags.AutoInvasionStart then 
+        local invF = Workspace:FindFirstChild("InvasionNpc")
+        if invF then for _, o in ipairs(invF:GetDescendants()) do CheckMob(o) end end
+        if bestTarget then return bestTarget end
+    end
+
+    -- 4. Scan Generic Maps (If no higher priority target found and SmartFarm is ON)
     if Flags.SmartFarm then 
         local mf = Workspace:FindFirstChild("Npc")
         if mf then for _, o in ipairs(mf:GetDescendants()) do CheckMob(o) end end
-        
-        local invF = Workspace:FindFirstChild("InvasionNpc")
-        if invF then for _, o in ipairs(invF:GetDescendants()) do CheckMob(o) end end
     end
     
     return bestTarget
 end
+
+-- [PROMPT SUPPRESSION]
+task.spawn(function()
+    while task.wait(1) do
+         if getgenv().NebuBlox_SessionID ~= SessionID then break end
+         
+         -- 1. Boss Rush Prompt
+         if Flags.BossRushDBZ or Flags.BossRushJJK then
+             local br = Remotes.BossRush and Remotes.BossRush:FindFirstChild("BossRushRemote")
+             if br and br.OnClientEvent then
+                 if getconnections then
+                     for _, c in pairs(getconnections(br.OnClientEvent)) do c:Disable() end
+                 end
+             end
+         end
+         
+         -- 2. Easy Trial Prompt "NotifyBeforeStart"
+         if Flags.AutoTrial then
+             local tr = Remotes.TimeTrial and Remotes.TimeTrial:FindFirstChild("TrialEffects")
+             if tr and tr.OnClientEvent then
+                 if getconnections then
+                     for _, c in pairs(getconnections(tr.OnClientEvent)) do c:Disable() end
+                 end
+             end
+         end
+    end
+end)
 
 local function GetBossSpawn(mode)
     local maps = Workspace:FindFirstChild("Maps")
@@ -833,51 +1034,52 @@ getgenv().NebuBlox_MovementConnection = RunService.RenderStepped:Connect(functio
         local root = char:FindFirstChild("HumanoidRootPart")
         if not root then return end
         
+        -- Speed
         local hum = char:FindFirstChild("Humanoid")
         if hum and hum.WalkSpeed ~= 70 then hum.WalkSpeed = 70 end
 
         -- PRIORITY 1: Trial
         local tf = Workspace:FindFirstChild("TrialRoomNpc")
-        local InTrial = tf and #tf:GetChildren() > 0
+        local InTrialArea = tf and #tf:GetChildren() > 0 
         
-        if InTrial and Flags.AutoTrialFarm then
+        if InTrialArea and Flags.AutoTrialFarm then
             local t = getgenv().NebuBlox_CurrentTarget
             if t and t.Parent and t:FindFirstChild("Humanoid") and t.Humanoid.Health > 0 and t:FindFirstChild("HumanoidRootPart") then
                 root.CFrame = t.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
                 root.AssemblyLinearVelocity = Vector3.zero
             end
-            return
+            -- STAY IN TRIAL ROOM: Even if no target, don't fall through to farming if in trial area
+            return 
         end
         
         -- PRIORITY 2: Invasion
         local invF = Workspace:FindFirstChild("InvasionNpc")
-        local invBoss = Workspace.Maps:FindFirstChild("DemonSlayerInvasion")
-        local InInvasion = (invF and #invF:GetChildren() > 0) or (invBoss and invBoss:FindFirstChild("NpcSpawns") and #invBoss.NpcSpawns:GetChildren() > 0)
-        
-        if InInvasion and Flags.AutoInvasionStart then
-             local t = getgenv().NebuBlox_CurrentTarget
-             if t and t.Parent and t:FindFirstChild("Humanoid") and t.Humanoid.Health > 0 and t:FindFirstChild("HumanoidRootPart") then
-                 root.CFrame = t.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
-                 root.AssemblyLinearVelocity = Vector3.zero
-             end
-             return
+        local InInvasionNow = invF and CountLiveEnemies(invF) > 0
+        local InInvasionArea = InInvasionNow or (invF and #invF:GetChildren() > 0 and (tick() - LastInvasionJoinTime < 90))
+
+        if InInvasionArea and Flags.AutoInvasionStart then
+            local t = getgenv().NebuBlox_CurrentTarget
+            if t and t.Parent and t:FindFirstChild("Humanoid") and t.Humanoid.Health > 0 and t:FindFirstChild("HumanoidRootPart") then
+                root.CFrame = t.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
+                root.AssemblyLinearVelocity = Vector3.zero
+            end
+            return -- Priority: Don't do anything else while in Invasion
         end
 
         -- PRIORITY 3: Boss Rush
         if Flags.BossRushDBZ or Flags.BossRushJJK then
-             -- FIRST: Try to target actual boss
+             -- Try to attack specific target first
              local t = getgenv().NebuBlox_CurrentTarget
              if t and t.Parent and t:FindFirstChild("Humanoid") and t.Humanoid.Health > 0 and t:FindFirstChild("HumanoidRootPart") then
-                 root.CFrame = t.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
-                 root.AssemblyLinearVelocity = Vector3.zero
-                 return
+                root.CFrame = t.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
+                root.AssemblyLinearVelocity = Vector3.zero
+                return
              end
              
-             -- FALLBACK: Go to spawn
+             -- Fallback: Stand at spawn if no target found yet
              local tc = nil
              if Flags.BossRushDBZ then local s = GetBossSpawn("Dbz"); if s then tc = s.CFrame * CFrame.new(0,0,2) end
              elseif Flags.BossRushJJK then local s = GetBossSpawn("Jjk"); if s then tc = s.CFrame * CFrame.new(0,0,2) end end
-             
              if tc then root.CFrame = tc; root.AssemblyLinearVelocity = Vector3.zero end
              return
         end
@@ -893,11 +1095,13 @@ getgenv().NebuBlox_MovementConnection = RunService.RenderStepped:Connect(functio
     end)
 end)
 
+-- TARGET UPDATER (THROTTLED: 0.15s)
 task.spawn(function()
     while task.wait(0.15) do
         if getgenv().NebuBlox_SessionID ~= SessionID then break end
-        if Flags.SmartFarm or Flags.AutoTrialFarm or Flags.AutoInvasionStart or Flags.BossRushDBZ or Flags.BossRushJJK then 
-             local t = GetTarget()
+        if Flags.SmartFarm or Flags.AutoTrialFarm or Flags.AutoInvasionStart then 
+             -- Enabled if ANY auto-attack mode is on
+             local t = GetSmartTarget()
              if t then
                  getgenv().NebuBlox_CurrentTarget = t
                  if not LastTargetedTime[t] then LastTargetedTime[t] = tick() end
@@ -926,61 +1130,221 @@ end)
 
 
 
--- AUTOMATION & SWAPPED GAMEMODE LOGIC
+-- AUTOMATION (RESTORED ALL GACHAS & GAMEMODES)
 task.spawn(function()
-    local SpecialProgressionRemote = Remotes:WaitForChild("SpecialProgression", 5)
+    print("[Nebublox] Automation Thread Started.")
     
+    -- Ensure Remotes reference exists
+    local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 10)
+    if not Remotes then
+         warn("[Nebublox] CRITICAL: 'Remotes' folder not found!")
+         return
+    end
+
+    local loops = 0
     while task.wait(0.5) do
         if getgenv().NebuBlox_SessionID ~= SessionID then break end
+        loops = loops + 1
+        
+
+
         pcall(function()
-            -- Auto Join Trial (Easy)
+            -- Lazy load SpecialProgression to avoid blocking
+            local SpecialProgressionRemote = Remotes:FindFirstChild("SpecialProgression")
+            -- State Tracking (Refined for Prioritization)
             local tf = Workspace:FindFirstChild("TrialRoomNpc")
-            local InTrial = tf and #tf:GetChildren() > 0
+            local InTrialNow = tf and CountLiveEnemies(tf) > 0
+            -- Refined InTrialArea: Only true if there are live mobs OR if we specifically joined recently
+            local InTrialArea = InTrialNow or (tf and #tf:GetChildren() > 0 and (tick() - LastTrialJoinTime < 30))
             
+            -- Auto Join Trial (Easy)
             if Flags.AutoTrial and Remotes.TimeTrial then
                 local TTR = Remotes.TimeTrial:FindFirstChild("TimeTrialRemote")
                 if TTR then
-                    if not InTrial then
+                    if not InTrialArea then
                         if (tick() - LastTrialJoinTime > 15) then
                              TTR:FireServer("Enter")
                              LastTrialJoinTime = tick()
+                             ANUI:Notify({Title = "Trial", Content = "Attempting to join Trial...", Icon = "clock", Duration = 3})
                         end
                     end
                 end
             end
             
-            -- INVASION MANAGER
-            if Flags.AutoInvasionStart then 
-                local invMap = Workspace.Maps:FindFirstChild("DemonSlayerInvasion")
-                local invMobs = Workspace:FindFirstChild("InvasionNpc")
-                local activeMobs = CountLiveEnemies(invMobs) + CountLiveEnemies(invMap)
+            -- Invasion (Slayer World) - Only if NOT in Trial area
+            if Flags.AutoInvasionStart and not InTrialArea then 
+                local InvasionFolder = Remotes:FindFirstChild("Invasion")
+                local foundRemote = false
                 
-                if activeMobs == 0 then
-                    local InvStart = Remotes.Invasion and Remotes.Invasion:FindFirstChild("InvasionStart")
-                    if InvStart then 
-                        InvStart:FireServer("StartUi", "DemonSlayerInvasion")
+                -- Debug: Notify once every 30s that we are checking for invasion
+                if loops % 60 == 0 then -- approx 30s
+                    ANUI:Notify({Title = "Automation", Content = "Checking for Invasions...", Icon = "search", Duration = 2})
+                end
+                if InvasionFolder then
+                    local InvRemote = InvasionFolder:FindFirstChild("InvasionRemote")
+                    local InvStart = InvasionFolder:FindFirstChild("InvasionStart")
+                    local InvUpdate = InvasionFolder:FindFirstChild("UpdateUi") or InvasionFolder:FindFirstChild("InvasionUpdate")
+                    local InvJoin = InvasionFolder:FindFirstChild("JoinInvasion")
+                    
+                    -- Try multiple invasion start methods
+                    pcall(function()
+                        if InvStart then 
+                            -- print("State: Invasion Started (Method 1)")
+                            foundRemote = true
+                            LastInvasionJoinTime = tick()
+                            InvStart:FireServer("Start", "DemonSlayerInvasion")
+                            InvStart:FireServer("StartUi", "DemonSlayerInvasion")
+                            InvStart:FireServer("Enter", "DemonSlayerInvasion")
+                            InvStart:FireServer("JoinInvasion", "DemonSlayerInvasion")
+                            InvStart:FireServer("StartInvasion")
+                        end
+                        if InvRemote then
+                            foundRemote = true
+                            LastInvasionJoinTime = tick()
+                            InvRemote:FireServer("StartInvasion", "DemonSlayerInvasion")
+                            InvRemote:FireServer("JoinInvasion", "DemonSlayerInvasion")
+                            InvRemote:FireServer("Start", "DemonSlayerInvasion")
+                            InvRemote:FireServer("Enter")
+                            InvRemote:FireServer("Begin", "DemonSlayerInvasion")
+                        end
+                        if InvJoin then
+                            foundRemote = true
+                            LastInvasionJoinTime = tick()
+                            InvJoin:FireServer("DemonSlayerInvasion")
+                            InvJoin:FireServer("Join", "DemonSlayerInvasion")
+                        end
+                        if InvUpdate then
+                            InvUpdate:FireServer("JoinInvasion", "DemonSlayerInvasion")
+                            InvUpdate:FireServer("StartInvasion", "DemonSlayerInvasion")
+                        end
+                    end)
+                end
+                
+                -- Also try direct remote path (alternative structure)
+                pcall(function()
+                    local directInv = Remotes:FindFirstChild("InvasionStart") or Remotes:FindFirstChild("InvasionRemote") or Remotes:FindFirstChild("StartInvasion")
+                    if directInv then
+                        foundRemote = true
+                        LastInvasionJoinTime = tick()
+                        -- String Args
+                        directInv:FireServer("StartUi", "DemonSlayerInvasion") -- [NEW]
+                        directInv:FireServer("Start", "DemonSlayerInvasion")
+                        directInv:FireServer("Enter", "DemonSlayerInvasion")
+                        -- Table Args (USER PROVIDED)
+                        pcall(function()
+                            directInv:FireServer({
+                                Action = "OpenUi",
+                                InvasionName = "DemonSlayerInvasion",
+                                CanEnter = true -- Trying true to force entry
+                            })
+                            directInv:FireServer({
+                                Action = "JoinInvasion",
+                                InvasionName = "DemonSlayerInvasion"
+                            })
+                        end)
+                    end
+                end)
+                
+                -- [UI HIDER / SUPPRESSOR]
+                if Flags.AutoInvasionStart or Flags.BossRushDBZ or Flags.BossRushJJK then
+                     pcall(function()
+                         local gui = player.PlayerGui:FindFirstChild("Invasion") or player.PlayerGui:FindFirstChild("BossRush")
+                         if gui and gui.Enabled then
+                             gui.Enabled = false
+                             -- Ensure we click 'Join' if it's there
+                             local joinBtn = gui:FindFirstChild("Join") or (gui:FindFirstChild("Main") and gui.Main:FindFirstChild("Join"))
+                             if joinBtn then
+                                 for _, c in pairs(getconnections(joinBtn.MouseButton1Click)) do c:Fire() end
+                                 for _, c in pairs(getconnections(joinBtn.MouseButton1Up)) do c:Fire() end
+                             end
+                         end
+                     end)
+                end
+                
+                -- [NEW] BOSS RUSH AUTOMATION
+                if Flags.BossRushDBZ or Flags.BossRushJJK then
+                    local BR_Folder = Remotes:FindFirstChild("BossRush")
+                    if BR_Folder then
+                        local BR_Start = BR_Folder:FindFirstChild("BossRushStart")
+                        local BR_Remote = BR_Folder:FindFirstChild("BossRushRemote")
+                        local Mode = Flags.BossRushDBZ and "DbzBossRush" or "JjkBossRush"
+                        
+                        -- Prevent spam joining if already in Boss Rush map
+                        local maps = Workspace:FindFirstChild("Maps")
+                        local inBR = maps and maps:FindFirstChild(Mode)
+                        if inBR then
+                            local brF = Workspace:FindFirstChild("BossRushNpc") and Workspace.BossRushNpc:FindFirstChild(Mode)
+                            if brF and CountLiveEnemies(brF) == 0 then inBR = false end
+                        end
+                        
+                        if not inBR then
+                            -- Throttle join attempts (every 5 seconds)
+                            if not getgenv().LastBRJoinAttempt or (tick() - getgenv().LastBRJoinAttempt > 5) then
+                                getgenv().LastBRJoinAttempt = tick()
+                                -- print("[Nebublox] Attempting to join Boss Rush: " .. Mode)
+                                
+                                pcall(function()
+                                    if BR_Start then
+                                        -- print("[BossRush] Found 'BossRushStart'") -- Debug
+                                        -- String Args
+                                        BR_Start:FireServer("StartUi", Mode)
+                                        BR_Start:FireServer("Start", Mode)
+                                        BR_Start:FireServer("Join", Mode)
+                                        -- Table Args (New Hypothesis)
+                                        BR_Start:FireServer({Action = "Start", Mode = Mode, BossRushName = Mode})
+                                        BR_Start:FireServer({Action = "Join", Mode = Mode, BossRushName = Mode})
+                                        BR_Start:FireServer({Action = "Enter", Mode = Mode, BossRushName = Mode})
+                                    end
+                                    if BR_Remote then
+                                        -- String Args
+                                        BR_Remote:FireServer("OpenBossRushFrame", Mode) 
+                                        BR_Remote:FireServer("StartUi", Mode)
+                                        BR_Remote:FireServer("Start", Mode)
+                                        BR_Remote:FireServer("Join", Mode)
+                                        
+                                        -- Table Args (Comprehensive)
+                                        local tableActions = {"Start", "Join", "Enter", "OpenUi", "OpenBossRushFrame"}
+                                        for _, act in ipairs(tableActions) do
+                                            BR_Remote:FireServer({Action = act, Mode = Mode, BossRushName = Mode})
+                                        end
+                                        
+                                        BR_Remote:FireServer({BossRushName = Mode, Action = "Update"}) -- Update check
+                                    end
+                                end)
+                            end
+                        end
                     end
                 end
+                
+                -- Try scanning all Remotes for invasion-related names
+                pcall(function()
+                    for _, remote in ipairs(Remotes:GetDescendants()) do
+                        if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+                            local name = remote.Name:lower()
+                            if name:find("invasion") then
+                                foundRemote = true
+                                pcall(function() remote:FireServer("Start", "DemonSlayerInvasion") end)
+                                pcall(function() remote:FireServer("Enter", "DemonSlayerInvasion") end)
+                                pcall(function() remote:FireServer("Join", "DemonSlayerInvasion") end)
+                                pcall(function() remote:FireServer("DemonSlayerInvasion") end)
+                            end
+                        end
+                    end
+                end)
             end
             
-            -- BOSS RUSH LOGIC
-            if (Flags.BossRushDBZ or Flags.BossRushJJK) then
+            -- Boss - Only if NOT in Trial area
+            if (Flags.BossRushDBZ or Flags.BossRushJJK) and not InTrialArea then
+                 local BR = Remotes.BossRush
                  local mode = Flags.BossRushDBZ and "DbzBossRush" or "JjkBossRush"
-                 local map = Workspace.Maps:FindFirstChild(mode)
-                 local enemies = CountLiveEnemies(map)
-                 
-                 if enemies == 0 then
-                     local br = Remotes.BossRush
-                     if br and br:FindFirstChild("BossRushStart") then
-                         br.BossRushStart:FireServer("StartUi", mode)
-                         if br:FindFirstChild(mode) then 
-                             br[mode]:FireServer("Enter") 
-                         end
-                     end
+                 -- Silent Mode: Disable Client Listener
+                 if getconnections then 
+                    if BR and BR.BossRushRemote then for _, c in pairs(getconnections(BR.BossRushRemote.OnClientEvent)) do c:Disable() end end
                  end
+                 if BR and BR.BossRushStart then BR.BossRushStart:FireServer("StartUi", mode) end
             end
-
             
+            -- Gacha & Misc
             local SP = Remotes.SpecialPerkRemotes and Remotes.SpecialPerkRemotes:FindFirstChild("SpecialPerk")
             if SP then
                 local function Roll(n) SP:FireServer("Spin", n) end
@@ -992,8 +1356,11 @@ task.spawn(function()
                 if Flags.NarutoTailedBeast then Roll("NarutoTailedBeast") end
                 if Flags.JjkDomain then Roll("JjkDomain") end
                 
+                -- Demon World Gachas
                 if Flags.SlayerBreathing then 
+                    -- Silent Mode: Disable Client Listener for ALL Gacha if rolling
                     if getconnections and SP and SP.OnClientEvent then for _, c in pairs(getconnections(SP.OnClientEvent)) do c:Disable() end end
+                    -- SP:FireServer("OpenFrame", "DemonSlayerBreathing") -- REMOVED
                     SP:FireServer("Spin", "DemonSlayerBreathing") 
                 end
                 if Flags.SlayerArt then 
@@ -1002,9 +1369,11 @@ task.spawn(function()
                 end
             end
             
+            -- Trial Upgrades
             if Remotes.TimeTrial then
                 local UpRemote = Remotes.TimeTrial:FindFirstChild("TimeTrialUpgrade")
                 if UpRemote then
+                    -- Silent Mode: Block 'OpenUi' and 'SuccessfulUpgrade' prompts
                     if getconnections then for _, c in pairs(getconnections(UpRemote.OnClientEvent)) do c:Disable() end end
                     
                     if Flags.TrialUpgradeStrength then UpRemote:FireServer("UpgradeStat", "StrengthMultiplier") end
@@ -1016,6 +1385,7 @@ task.spawn(function()
             end
             
             if SpecialProgressionRemote then
+                -- Silent Mode: Block "Not enough tokens to roll!" and other prompts
                 if getconnections and SpecialProgressionRemote.OnClientEvent then 
                     pcall(function() for _, c in pairs(getconnections(SpecialProgressionRemote.OnClientEvent)) do c:Disable() end end)
                 end
@@ -1026,86 +1396,125 @@ task.spawn(function()
 
             if Flags.AutoRebirth and Remotes.Rebirth then 
                 Remotes.Rebirth:FireServer("Rebirth") 
-                if getconnections then for _, c in pairs(getconnections(Remotes.Rebirth.OnClientEvent)) do c:Disable() end end
+                -- Anti-Notification (Try to disable listener)
+                if getconnections then
+                    for _, c in pairs(getconnections(Remotes.Rebirth.OnClientEvent)) do c:Disable() end
+                end
             end
             if Flags.AutoTimedRewards and Remotes.TimedRewards then 
+                -- Silent UI: Disable 'CannotClaim' prompts
                 if getconnections then for _, c in pairs(getconnections(Remotes.TimedRewards.OnClientEvent)) do c:Disable() end end
+                
+                -- Rewards 1-8 (User Confirmed)
                 for i=1,8 do 
                     Remotes.TimedRewards:FireServer("TimedReward"..i) 
                     Remotes.TimedRewards:FireServer("Reward"..i)
                 end 
             end
             
+            -- [SAFETY ENFORCEMENT - PAUSE LOGIC]
+            -- Instead of forcing SmartFarm=false, we just ensure GetSmartTarget ignores farming
+            -- while gamemode is active. This allows SmartFarm to "resume" automatically.
+            
+            -- Trial/Invasion Return Logic (CLEANED)
             if PerformReturn then
                 local now = tick()
                 local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if not root then return end
                 
-                if root then
-                    local tf = Workspace:FindFirstChild("TrialRoomNpc")
-                    local InTrialNow = tf and #tf:GetChildren() > 0
-                    local invF = Workspace:FindFirstChild("InvasionNpc")
-                    local InInvasionNow = invF and #invF:GetChildren() > 0
-                    
-                    if Flags.AutoInvasionStart then
-                        if InInvasionNow then InInvasion = true; LastInvasionCheck = now end
+                -- Check Trial State
+                local tf = Workspace:FindFirstChild("TrialRoomNpc")
+                -- local InTrialNow = tf and CountLiveEnemies(tf) > 0 -- Moved to top
+
+                -- State Tracking (Moved to top)
+                -- if Flags.AutoInvasionStart then ... end
+                local InInvasionNow = invF and CountLiveEnemies(invF) > 0
+                
+                -- Track Invasion State
+                if Flags.AutoInvasionStart then
+                    if InInvasionNow then
+                        InInvasion = true
+                        LastInvasionCheck = now
                     end
-                    
-                    if Flags.AutoTrial and (now - LastTrialJoinTime > 10) then
-                        if not InTrialNow then
-                            if getgenv().TrialSuccess then
-                                local internalName = MapDisplayToInternal[SelectedReturnMap] or SelectedReturnMap
-                                local returnedToSave = false
-                                if SavedCFrame and getgenv().SavedMapInternalName then
-                                    local savedMap = getgenv().SavedMapInternalName:lower()
-                                    if internalName:lower() == savedMap then
-                                        root.CFrame = SavedCFrame
-                                        ANUI:Notify({Title = "Trial Complete!", Content = "Returned to saved spot in " .. SelectedReturnMap, Icon = "check", Duration = 3})
-                                        returnedToSave = true
-                                    end
+                end
+                
+                -- TRIAL RETURN: If we joined a trial AND it's now empty
+                -- Removed 300s timeout to allow long runs
+                -- ADDED: TrialSuccess check
+                if Flags.AutoTrial and (now - LastTrialJoinTime > 10) then
+                    if not InTrialArea then
+                        if getgenv().TrialSuccess then
+                            -- print("[Nebublox] Trial Success Verified! Returning...")
+                            -- Trial ended! Perform return
+                            local internalName = MapDisplayToInternal[SelectedReturnMap] or SelectedReturnMap
+                            
+                            -- Check for saved position match
+                            if SavedCFrame and getgenv().SavedMapInternalName then
+                                local savedMap = getgenv().SavedMapInternalName:lower()
+                                if internalName:lower() == savedMap then
+                                    root.CFrame = SavedCFrame
+                                    ANUI:Notify({Title = "Trial Complete!", Content = "Returned to saved spot in " .. SelectedReturnMap, Icon = "check", Duration = 3})
+                                    LastTrialJoinTime = now + 999999
+                                    getgenv().TrialSuccess = false -- Reset
+                                    return
                                 end
-                                
-                                if not returnedToSave then
-                                    local WorldRemote = Remotes:FindFirstChild("World")
-                                    local teleported = false
-                                    pcall(function()
-                                        if WorldRemote then
-                                            WorldRemote:FireServer("Teleport", internalName)
-                                            WorldRemote:FireServer(internalName, "Teleport")
-                                            WorldRemote:FireServer("TeleportToWorld", internalName)
-                                            ANUI:Notify({Title = "Trial Complete!", Content = "Returned to: " .. SelectedReturnMap, Icon = "map-pin", Duration = 3})
-                                            teleported = true
-                                        end
-                                    end)
-                                    if not teleported then
-                                        local maps = Workspace:FindFirstChild("Maps")
-                                        local targetMap = maps and maps:FindFirstChild(internalName)
-                                        local spawn = targetMap and (targetMap:FindFirstChild("Spawn") or targetMap:FindFirstChild("SpawnPoint"))
-                                        if spawn then
-                                            root.CFrame = spawn.CFrame + Vector3.new(0, 5, 0)
-                                            ANUI:Notify({Title = "Trial Complete!", Content = "Teleported to: " .. SelectedReturnMap, Icon = "map-pin", Duration = 3})
-                                        end
-                                    end
-                                end
-                                LastTrialJoinTime = now + 999999
-                                getgenv().TrialSuccess = false
                             end
+                            
+                            -- Use World Remote for spawn teleport
+                            local WorldRemote = Remotes:FindFirstChild("World")
+                            local teleported = false
+                            pcall(function()
+                                if WorldRemote then
+                                    -- Try multiple teleport call formats
+                                    WorldRemote:FireServer("Teleport", internalName)
+                                    WorldRemote:FireServer(internalName, "Teleport")
+                                    WorldRemote:FireServer("TeleportToWorld", internalName)
+                                    ANUI:Notify({Title = "Trial Complete!", Content = "Returned to: " .. SelectedReturnMap, Icon = "map-pin", Duration = 3})
+                                    teleported = true
+                                end
+                            end)
+                            
+                            if not teleported then
+                                -- Fallback: Try Maps folder teleport
+                                local maps = Workspace:FindFirstChild("Maps")
+                                local targetMap = maps and maps:FindFirstChild(internalName)
+                                local spawn = targetMap and (targetMap:FindFirstChild("Spawn") or targetMap:FindFirstChild("SpawnPoint"))
+                                if spawn then
+                                    root.CFrame = spawn.CFrame + Vector3.new(0, 5, 0)
+                                    ANUI:Notify({Title = "Trial Complete!", Content = "Teleported to: " .. SelectedReturnMap, Icon = "map-pin", Duration = 3})
+                                end
+                            end
+                            
+                            LastTrialJoinTime = now + 999999
+                            getgenv().TrialSuccess = false -- Reset
+                        else
+                             -- print("[Nebublox] Trial Ended but Success NOT detected. Staying in lobby.")
                         end
                     end
+                end
+                
+                -- INVASION RETURN: If we were in invasion AND it's now empty for 5s
+                if Flags.AutoInvasionStart and InInvasion and not InInvasionNow and (now - LastInvasionCheck > 5) then
+                    InInvasion = false -- Reset
+                    local internalName = MapDisplayToInternal[SelectedReturnMap] or SelectedReturnMap
                     
-                    if Flags.AutoInvasionStart and InInvasion and not InInvasionNow and (now - LastInvasionCheck > 5) then
-                        InInvasion = false
-                        pcall(function()
-                            if firesignal then
-                                local WorldRemote = Remotes:FindFirstChild("World")
-                                if WorldRemote then firesignal(WorldRemote.OnClientEvent, "StartWorldEffects", "DemonSlayer"); ANUI:Notify({Title = "Invasion Done", Content = "Signaled World Return (Client)", Icon = "map", Duration = 3}) end
-                                local GamemodeUi = Remotes:FindFirstChild("GamemodeUi")
-                                if GamemodeUi then firesignal(GamemodeUi.OnClientEvent, "CloseGamemodeUi") end
-                            else
-                                 local WorldRemote = Remotes:FindFirstChild("World")
-                                 if WorldRemote then WorldRemote:FireServer("Teleport", "DemonSlayer") end
-                                 ANUI:Notify({Title = "Invasion Done", Content = "Fallback: Standard Teleport", Icon = "alert-triangle", Duration = 3})
-                            end
-                        end)
+                    local WorldRemote = Remotes:FindFirstChild("World")
+                    if WorldRemote then
+                        -- Try multiple teleport call formats
+                        pcall(function() WorldRemote:FireServer("Teleport", internalName) end)
+                        pcall(function() WorldRemote:FireServer(internalName, "Teleport") end)
+                        pcall(function() WorldRemote:FireServer("TeleportToWorld", internalName) end)
+                        pcall(function() WorldRemote:FireServer(internalName) end)
+                        ANUI:Notify({Title = "Invasion Complete!", Content = "Returned to: " .. SelectedReturnMap, Icon = "map-pin", Duration = 3})
+                    else
+                        -- Fallback: Direct teleport to map spawn
+                        local maps = Workspace:FindFirstChild("Maps")
+                        local targetMap = maps and maps:FindFirstChild(internalName)
+                        local spawn = targetMap and (targetMap:FindFirstChild("Spawn") or targetMap:FindFirstChild("SpawnPoint"))
+                        if spawn then
+                            root.CFrame = spawn.CFrame + Vector3.new(0, 5, 0)
+                            ANUI:Notify({Title = "Invasion Complete!", Content = "Teleported to: " .. SelectedReturnMap, Icon = "map-pin", Duration = 3})
+                        end
                     end
                 end
             end
@@ -1113,6 +1522,7 @@ task.spawn(function()
     end
 end)
 
+-- AUTO TRIAL JOIN
 task.spawn(function()
     pcall(function()
         if not getgenv().NebuBlox_TrialConnection then
@@ -1120,10 +1530,13 @@ task.spawn(function()
             if not TimeTrial then return end
             
             getgenv().NebuBlox_TrialConnection = TimeTrial.TrialEffects.OnClientEvent:Connect(function(action, trialType)
+                 -- print("[Trial Debug] Event Action:", action) -- Debug print
+                 
                  if action == "NotifyBeforeStart" then
                      getgenv().TrialSuccess = false
                  elseif action == "Success" or action == "TrialComplete" or action == "Victory" or action == "Rewards" then
                      getgenv().TrialSuccess = true
+                     -- print("[Nebublox] Trial Success Flag SET!")
                  end
 
                  if Flags.AutoTrial and action == "NotifyBeforeStart" and trialType == "EasyTrial" then
@@ -1132,21 +1545,22 @@ task.spawn(function()
                          LastTrialJoinTime = tick()
                      end
                      ANUI:Notify({Title = "Trial", Content = "Joining Easy Trial...", Icon = "clock", Duration = 3})
+                     
+                     -- Auto Potion
                      if Flags.AutoDropPotion then
                          local PotionRemote = Remotes:FindFirstChild("Potion")
                          if PotionRemote then PotionRemote:FireServer("DropsPotion") end
                      end
+                     
                      task.wait(2)
                      TimeTrial.UpdateUi:FireServer("JoinTrial", "EasyTrial")
                      task.delay(0.5, function()
                          pcall(function()
                              local gui = player.PlayerGui.GamemodeWarning
                              if gui then
-                                gui.Enabled = false 
-                                if gui.Buttons and gui.Buttons.Confirm then
-                                    for _, c in pairs(getconnections(gui.Buttons.Confirm.MouseButton1Up)) do c:Fire() end
-                                end
-                                task.delay(1, function() gui.Enabled = true end)
+                                 gui.Enabled = false 
+                                 for _, c in pairs(getconnections(gui.Buttons.Confirm.MouseButton1Up)) do c:Fire() end
+                                 task.delay(1, function() gui.Enabled = true end)
                              end
                          end)
                      end)
@@ -1156,4 +1570,4 @@ task.spawn(function()
     end)
 end)
 
-ANUI:Notify({Title = "Nebublox", Content = "Loaded v3.0 (Gamemode Logic Patched)", Icon = "check", Duration = 5})
+ANUI:Notify({Title = "Nebublox", Content = "Loaded v3.2 (Optimized Logic)", Icon = "check", Duration = 5})

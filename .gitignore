@@ -2,3 +2,14 @@
 .DS_Store
 Thumbs.db
 *.log
+private/
+games/
+*.py
+*.txt
+search_output.txt
+standard_tabs_snippet.lua
+smart_scanner.lua
+auto_easy_trial.lua
+ANUI_source.lua
+Starter_Template.lua
+loader.lua
