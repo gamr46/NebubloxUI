@@ -41,4 +41,4 @@ The loader will:
 [Join the Discord](https://discord.gg/kgu3WXGg5m)
 
 ---
-Created by **He Who Remains Lil'Nug**
+Created by **Lil'Nug**
