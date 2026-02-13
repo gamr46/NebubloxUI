@@ -1166,6 +1166,14 @@ return f
 end
 
 function d.New(e)
+    -- [PATCH] Sound
+    pcall(function()
+        local Sound = Instance.new("Sound", game:GetService("CoreGui"))
+        Sound.SoundId = "rbxassetid://4590657391"
+        Sound.Volume = 0.5
+        Sound.PlayOnRemove = true
+        Sound:Destroy()
+    end)
 local f={
 Title=e.Title or"Notification",
 Content=e.Content or nil,
@@ -5839,7 +5847,7 @@ Elements={}
 local ai=a.load'z'(ag)
 ah.ParagraphFrame=ai
 
--- [FIX] Add Lock/Unlock to Paragraphs
+-- [PATCH] Fix Lock/Unlock
 function ah.Lock(aj, ak)
     ah.Locked = true
     return ah.ParagraphFrame:Lock(ak)
@@ -5849,6 +5857,7 @@ function ah.Unlock(aj)
     ah.Locked = false
     return ah.ParagraphFrame:Unlock()
 end
+
 
 function ah.SetTitle(aj,ak)
 aj.Title=ak
@@ -7977,6 +7986,10 @@ if as then al.Value=as else
 if al.Multi then al.Value={}else al.Value=nil end
 end
 ap:Refresh(al.Values)
+end
+
+function ap.Set(ar, as)
+    ap:Select(as)
 end
 
 
