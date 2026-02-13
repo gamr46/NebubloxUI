@@ -431,24 +431,27 @@ InputGroup:Button({
                 print("[Nebublox Debug] Unlocking Tabs...")
                 print("TrialTab:", TrialTab)
                 
-                local function SafeUnlock(tab, name)
-                    if tab then
-                        if tab.Unlock then
-                            local s, e = pcall(function() tab:Unlock() end)
-                            if s then print("Unlocked:", name) else warn("Unlock Error:", name, e) end
-                        else
-                            warn("Unlock method missing on:", name)
-                            -- Try fallback
-                            tab.Locked = false
-                        end
-                    else
-                        warn("Tab is nil:", name)
-                    end
+                local function ForceUnlock(tab, name)
+                    if not tab then warn(name, "is nil") return end
+                    print("[Nebublox Debug] Forcing unlock on:", name)
+                    
+                    -- Try Properties
+                    pcall(function() tab.Locked = false end)
+                    pcall(function() tab.Visible = true end)
+                    pcall(function() tab.Enabled = true end)
+                    pcall(function() tab.Selectable = true end)
+                    pcall(function() tab.Active = true end)
+                    
+                    -- Try Methods
+                    if tab.Unlock then pcall(function() tab:Unlock() end) end
+                    if tab.Enable then pcall(function() tab:Enable() end) end
+                    if tab.Show then pcall(function() tab:Show() end) end
+                    if tab.SetLocked then pcall(function() tab:SetLocked(false) end) end
                 end
 
-                SafeUnlock(TrialTab, "TrialTab")
-                SafeUnlock(GamemodesTab, "GamemodesTab")
-                SafeUnlock(GachaTab, "GachaTab")
+                ForceUnlock(TrialTab, "TrialTab")
+                ForceUnlock(GamemodesTab, "GamemodesTab")
+                ForceUnlock(GachaTab, "GachaTab")
                 
             else
                 -- [INVALID OR EXPIRED KEY]
