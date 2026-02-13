@@ -92,7 +92,7 @@ end)
 
 local AboutSection = MainTab:Section({ Title = "Authentication", Icon = "shield", Opened = true })
 AboutSection:Paragraph({
-    Title = "Thank You for using Universal Hub! ❤️",
+    Title = "Thank You for using Universal Hub! â¤ï¸",
     Content = "Join our Discord for keys and updates!"
 })
 

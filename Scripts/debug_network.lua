@@ -13,10 +13,10 @@ local hwid_success, hwid_result = pcall(function()
 end)
 
 if hwid_success then
-    print("✅ HWID Retrieved:", tostring(hwid_result))
+    print("âœ… HWID Retrieved:", tostring(hwid_result))
     hwid = tostring(hwid_result)
 else
-    warn("❌ HWID Retrieval Failed:", tostring(hwid_result))
+    warn("âŒ HWID Retrieval Failed:", tostring(hwid_result))
     hwid = "FALLBACK_HWID"
 end
 
@@ -29,11 +29,11 @@ local conn_success, conn_result = pcall(function()
 end)
 
 if conn_success then
-    warn("✅ CONNECTION SUCCESS!")
+    warn("âœ… CONNECTION SUCCESS!")
     print("Response:", conn_result)
     StarterGui:SetCore("SendNotification", {Title="Debug Success", Text="Check Console F9", Duration=5})
 else
-    warn("❌ CONNECTION FAILED!")
+    warn("âŒ CONNECTION FAILED!")
     warn("Error:", conn_result)
     StarterGui:SetCore("SendNotification", {Title="Debug Failed", Text=tostring(conn_result), Duration=10})
 end
