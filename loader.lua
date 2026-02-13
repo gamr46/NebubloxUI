@@ -107,7 +107,7 @@ KeySystem.__index = KeySystem
 -- Configuration
 local API_URL_KEY = "https://darkmatterv1.onrender.com/api/verify_key"
 local SETTINGS_FILE_KEY = "nebublox_key.data"
-local DISCORD_INVITE_KEY = "https://discord.gg/kgu3WXGg5m"
+local DISCORD_INVITE_KEY = "https://discord.gg/T2vw3QuJ9K"
 
 function KeySystem.new()
     local self = setmetatable({}, KeySystem)
@@ -365,7 +365,7 @@ local function StartHub()
         SocialSection:Button({
             Title = "Join Discord Community",
             Callback = function()
-                setclipboard("https://discord.gg/kgu3WXGg5m")
+                setclipboard("https://discord.gg/T2vw3QuJ9K")
                 SafeNotify({Title = "Discord", Content = "Invite copied!", Icon = "check", Duration = 3})
             end
         })
