@@ -377,26 +377,24 @@ local TrialTab, GamemodesTab, GachaTab
 
 -- [THEME: DARK BLUE / PINK GRADIENT]
 task.spawn(function()
-    -- Wait for UI to be ready
+    -- Wait for UI
     local attempts = 0
-    repeat 
+    while attempts < 30 do
+        if Window and Window.UIElements and Window.UIElements.Main then break end
         task.wait(0.5)
         attempts = attempts + 1
-    until (Window and Window.UIElements and Window.UIElements.Main) or attempts > 20
-    
-    if not Window or not Window.UIElements or not Window.UIElements.Main then 
-        warn("[Nebublox] UI Not Found for Gradient!")
-        return 
     end
+    
+    if not Window or not Window.UIElements or not Window.UIElements.Main then return end
     
     local function ApplyToFrame(frame)
         if not frame then return end
         
-        -- Force White Background for Gradient Visibility
+        -- Force White Background
         frame.BackgroundColor3 = Color3.new(1, 1, 1)
         frame.BackgroundTransparency = 0 
         
-        -- Remove conflicting theme gradients from library (WindUI spec)
+        -- Remove conflicting theme gradients
         local old = frame:FindFirstChild("WindUIGradient")
         if old then old:Destroy() end
         
@@ -408,31 +406,29 @@ task.spawn(function()
         end
         
         g.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 139)), -- Dark Blue
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 20, 147)) -- Deep Pink
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 139)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 20, 147))
         })
         g.Rotation = 45
         
-        -- [TEXT COLOR INJECTION] - Force contrast
+        -- Text Contrast
         for _, v in ipairs(frame:GetDescendants()) do
             if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then
-                 if v.TextColor3 == Color3.new(0,0,0) or v.TextColor3.R < 0.2 then -- If black or very dark
+                 if v.TextColor3 == Color3.new(0,0,0) or v.TextColor3.R < 0.2 then
                      v.TextColor3 = Color3.new(1,1,1)
                  end
             end
         end
     end
     
-    -- Apply repeatedly to fight Library overrides
-    task.spawn(function()
-        for i = 1, 5 do
-            ApplyToFrame(Window.UIElements.Main)
-            if Window.UIElements.Main:FindFirstChild("Main") then
-                ApplyToFrame(Window.UIElements.Main.Main)
-            end
-            task.wait(1)
+    -- Apply multiple times to override library
+    for i = 1, 5 do
+        ApplyToFrame(Window.UIElements.Main)
+        if Window.UIElements.Main:FindFirstChild("Main") then
+            ApplyToFrame(Window.UIElements.Main.Main)
         end
-    end)
+        task.wait(1.0)
+    end
 end)
 local MainTab = Window:Tab({ Title = "About", Icon = "info" })
 local BannerSection = MainTab:Section({ Title = "", Icon = "", Opened = true })
