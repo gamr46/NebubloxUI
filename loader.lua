@@ -202,8 +202,8 @@ function KeySystem:ShowUI(onSuccess)
 
     -- 2. Create Login Window
     local Window = ANUI:CreateWindow({
-        Title = "Nebublox Auth",
-        Author = "v1.0",
+        Title = "Nebublox",
+        Author = "He Who Remains",
         Folder = "NebubloxAuth",
         Icon = "rbxassetid://121698194718505", 
         IconSize = 44,
@@ -313,10 +313,10 @@ local function StartHub()
     else
         -- MANUAL SELECTION GUI
         local Window = ANUI:CreateWindow({
-            Title = "Universal Hub",
-            Author = "by He Who Remains",
+            Title = "Nebublox",
+            Author = "He Who Remains",
             Folder = "UniversalHub",
-            Icon = "rbxthumb://type=Asset&id=132367447015620&w=150&h=150", 
+            Icon = "rbxthumb://type=Asset&id=132367447015620&w=300&h=300", 
             IconSize = 44,
             Theme = "Dark",
             Transparent = false,
@@ -329,6 +329,7 @@ local function StartHub()
         
         -- Banner Injection
         local BannerSection = MainTab:Section({ Title = "", Icon = "", Opened = true })
+        BannerSection:Paragraph({ Title = "Welcome", Content = "Thank you for choosing Nebublox." })
         BannerSection:Paragraph({ Title = "Loading Banner...", Content = "" })
         
         task.defer(function()
