@@ -428,6 +428,7 @@ AboutSection:Paragraph({
 })
 
 -- Key System Logic
+local LoadGameTabs -- Forward declaration
 local UserKeyInput = ""
 
 -- Side-by-Side Input Group
@@ -482,12 +483,30 @@ InputGroup:Button({
             local data = result
             if data and data.valid then
                 -- [SUCCESS]
-                ANUI:Notify({Title = "Access Granted", Content = "Welcome, " .. tostring(data.username or "User"), Icon = "check", Duration = 5})
+                local remainingTimeStr = ""
+                if data.expires_at then
+                    local diff = tonumber(data.expires_at) - os.time()
+                    if diff > 0 then
+                        local d = math.floor(diff / 86400)
+                        local h = math.floor((diff % 86400) / 3600)
+                        local m = math.floor((diff % 3600) / 60)
+                        remainingTimeStr = "\nExpires in: " .. d .. "d " .. h .. "h " .. m .. "m"
+                    else
+                        remainingTimeStr = "\nKey Expired (or Permanent)"
+                    end
+                elseif data.expires_in then
+                     -- Support for seconds duration
+                     local diff = tonumber(data.expires_in)
+                     local h = math.floor(diff / 3600)
+                     local m = math.floor((diff % 3600) / 60)
+                     remainingTimeStr = "\nExpires in: " .. h .. "h " .. m .. "m"
+                end
+                
+                ANUI:Notify({Title = "Access Granted", Content = "Welcome, " .. tostring(data.username or "User") .. remainingTimeStr, Icon = "check", Duration = 5})
                 
                 -- >> UNLOCK FEATURES <<
-                if TrialTab then TrialTab:Unlock() end
-                if GamemodesTab then GamemodesTab:Unlock() end
-                if GachaTab then GachaTab:Unlock() end
+                -- >> UNLOCK FEATURES <<
+                LoadGameTabs()
                 
             else
                 -- [INVALID OR EXPIRED KEY]
@@ -529,7 +548,11 @@ local MapOptions = {"Cursed World", "Pirate World", "Shinobi World", "Slayer Wor
 local function RefreshMapOptions() end
 
 -- [TAB 2: FARM (SMART FARM)]
-local TeleportTab = Window:Tab({ Title = "Farm", Icon = "map-pin" })
+LoadGameTabs = function()
+    if getgenv().GameTabsLoaded then return end
+    getgenv().GameTabsLoaded = true
+    
+    local TeleportTab = Window:Tab({ Title = "Farm", Icon = "map-pin" })
 local FarmSection = TeleportTab:Section({ Title = "Smart Farm", Icon = "zap", Opened = true })
 
 FarmSection:Toggle({
@@ -949,6 +972,10 @@ PerfSection:Toggle({ Title = "Anti-AFK / Anti-Kick", Value = getgenv().NebubloxS
 PerfSection:Button({ Title = "⚡ Low GFX Mode (FPS Boost)", Callback = function() BoostFPS() end })
 
 ConfigSystem.CheckAutoload()
+end -- End of LoadGameTabs
+
+-- Force Load if Dev Mode
+if _G.NebubloxForceUI then LoadGameTabs() end
 
 -- // 3. LOGIC //
 local Remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
@@ -1190,7 +1217,7 @@ end)
 task.spawn(function()
     while true do
         if getgenv().NebuBlox_SessionID ~= SessionID then break end
-        local dt = task.wait(2) -- [LAG FIX] Slowed down to 2.0
+        local dt = task.wait(5) -- [LAG FIX] Slowed down to 5.0
         if Flags.SmartFarm or Flags.AutoTrialFarm or Flags.BossRushDBZ or Flags.BossRushJJK then
              pcall(function()
                 VirtualUser:CaptureController()
