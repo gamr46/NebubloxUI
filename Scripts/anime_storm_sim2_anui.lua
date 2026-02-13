@@ -1,5 +1,5 @@
--- // NEBUBLOX | ANIME STORM SIMULATOR 2 (v3.1: ERROR FIX) //
-print("/// NEBUBLOX v3.1 LOADED - " .. os.date("%X") .. " ///")
+-- // NEBUBLOX | ANIME STORM SIMULATOR 2 (v3.2: FREE/PREMIUM FIX) //
+print("/// NEBUBLOX v3.2 LOADED - " .. os.date("%X") .. " ///")
 -- // UI Library: ANUI //
 
 -- // 0. SESSION & CLEANUP //
@@ -10,10 +10,6 @@ getgenv().NebuBlox_SessionID = SessionID
 local function SafeDisconnect(conn)
     if conn then pcall(function() conn:Disconnect() end) end
 end
-
--- [SECURITY BYPASS REMOVED]
--- User reported this block causes "incomplete function call" syntax errors.
--- Logic removed to restore functionality.
 
 if getgenv().NebuBlox_Loaded then
     getgenv().NebuBlox_Running = false
@@ -26,9 +22,8 @@ if getgenv().NebuBlox_Loaded then
     SafeDisconnect(getgenv().NebuBlox_MovementConnection)
     SafeDisconnect(getgenv().NebuBlox_NoClipConnection)
     
-    -- [FIX] Removed 'ANUI_Window:Destroy()' to prevent Library crash (Line 13559 error)
     pcall(function()
-        getgenv().ANUI_Window = nil -- Just clear the variable
+        getgenv().ANUI_Window = nil 
         
         local core = game:GetService("CoreGui")
         local uis = {"Nebublox", "ANUI", "Orion", "Shadow", "ScreenGui", "NebuEnemyList"}
@@ -43,7 +38,7 @@ if getgenv().NebuBlox_Loaded then
     getgenv().NebuBlox_BossRushConnection = nil
     getgenv().NebuBlox_BossRushUIConnection = nil
     getgenv().NebuBlox_CurrentTarget = nil
-    getgenv().GameTabsLoaded = nil -- [FIX] Ensure tabs reload on script re-execution
+    getgenv().GameTabsLoaded = nil
 end
 
 getgenv().NebuBlox_Loaded = true
@@ -54,16 +49,14 @@ print("[Nebublox] New session started:", SessionID)
 
 -- [ROBUST LOADER]
 local function LoadScript(url)
-    -- [DEV] Try Local File First (for testing updates)
     if isfile and isfile("ANUI_source.lua") then return readfile("ANUI_source.lua") end
     if isfile and isfile("ANUI-Library/games/ANUI_source.lua") then return readfile("ANUI-Library/games/ANUI_source.lua") end
 
     local success, result = pcall(function() return game:HttpGet(url) end)
     if not success then
-        success, result = pcall(function() return HttpGet(url) end) -- Try global
+        success, result = pcall(function() return HttpGet(url) end)
     end
     if not success then
-        -- Fallback to request
         local req = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
         if req then
             local response = req({Url = url, Method = "GET"})
@@ -341,12 +334,8 @@ task.spawn(function()
     end
 end)
 
--- [TAB 1: ABOUT] (Forward declare)
-local TrialTab, GamemodesTab, GachaTab 
-
 -- [THEME: PITCH BLACK]
 task.spawn(function()
-    -- Wait for UI
     local attempts = 0
     while attempts < 30 do
         if Window and Window.UIElements and Window.UIElements.Main then break end
@@ -358,18 +347,14 @@ task.spawn(function()
     
     local function ApplyToFrame(frame)
         if not frame then return end
-        
-        -- Force Black Background
         frame.BackgroundColor3 = Color3.new(0, 0, 0)
         frame.BackgroundTransparency = 0 
         
-        -- Remove conflicting themes
         local old = frame:FindFirstChild("WindUIGradient")
         if old then old:Destroy() end
         local g = frame:FindFirstChild("NebuGradient")
         if g then g:Destroy() end
         
-        -- Text Contrast (White Text on Black BG)
         for _, v in ipairs(frame:GetDescendants()) do
             if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then
                  if v.TextColor3 == Color3.new(0,0,0) or v.TextColor3.R < 0.2 then
@@ -379,7 +364,6 @@ task.spawn(function()
         end
     end
     
-    -- Apply multiple times
     for i = 1, 5 do
         ApplyToFrame(Window.UIElements.Main)
         if Window.UIElements.Main:FindFirstChild("Main") then
@@ -388,6 +372,7 @@ task.spawn(function()
         task.wait(1.0)
     end
 end)
+
 local MainTab = Window:Tab({ Title = "About", Icon = "info" })
 local BannerSection = MainTab:Section({ Title = "", Icon = "", Opened = true })
 BannerSection:Paragraph({ Title = "Loading Banner...", Content = "" })
@@ -403,7 +388,7 @@ task.spawn(function()
                 if section then
                     local frame = Instance.new("ImageLabel")
                     frame.Name = "Banner"
-                    frame.Size = UDim2.new(1, 0, 0, 300) -- Original Banner Size
+                    frame.Size = UDim2.new(1, 0, 0, 300) 
                     frame.Position = paragraph.Position
                     frame.BackgroundTransparency = 1
                     frame.Image = imgId
@@ -421,24 +406,20 @@ end)
 -- // [TAB 1: ABOUT & KEY SYSTEM] //
 local AboutSection = MainTab:Section({ Title = "Authentication", Icon = "shield", Opened = true })
 
--- Welcome Message
--- Community Message
 AboutSection:Paragraph({
     Title = "Thank You for using Nebublox! ❤️",
     Content = "We appreciate your support! \nThis script features a powerful Auto Farm (Free) and specialized modes for Premium users.\n\nJoin our Discord for keys, updates, and a great community!"
 })
 
--- Key System Logic
-local LoadGameTabs -- Forward declaration
+local LoadPremiumTabs -- Forward declaration
 local UserKeyInput = ""
 
--- Side-by-Side Input Group
-local InputGroup = AboutSection:Group({ Title = "" }) -- Empty title for layout only
+local InputGroup = AboutSection:Group({ Title = "" })
 
 InputGroup:Input({
     Title = "Premium Key",
     Placeholder = "Enter Key...",
-    Width = 200, -- Smaller width to fit button
+    Width = 200, 
     Callback = function(text)
         UserKeyInput = text
     end
@@ -446,22 +427,17 @@ InputGroup:Input({
 
 InputGroup:Button({
     Title = "Verify",
-    Width = 100, -- Small button next to input
+    Width = 100, 
     Callback = function()
-        -- 1. Input Validation
         if UserKeyInput == "" then
             ANUI:Notify({Title = "Error", Content = "Please enter a key!", Icon = "alert-triangle", Duration = 3})
             return
         end
         
-        -- 2. Inform User
         ANUI:Notify({Title = "Verifying...", Content = "Checking key...", Icon = "loader", Duration = 2})
 
-        -- 3. API Request
         local success, result = pcall(function()
             local url = API_URL_BASE .. "/verify_key?key=" .. UserKeyInput .. "&hwid=" .. game:GetService("RbxAnalyticsService"):GetClientId()
-            
-            -- [ROBUST REQUEST]
             local responseBody = nil
             local req = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
             if req then
@@ -470,20 +446,15 @@ InputGroup:Button({
                     responseBody = res.Body
                 end
             end
-            
-            -- Fallback
             if not responseBody then
                 responseBody = game:HttpGet(url)
             end
-            
             return game:GetService("HttpService"):JSONDecode(responseBody)
         end)
 
-        -- 4. Handle Response
         if success then
             local data = result
             if data and data.valid then
-                -- [SUCCESS]
                 local remainingTimeStr = ""
                 if data.expires_at then
                     local diff = tonumber(data.expires_at) - os.time()
@@ -496,25 +467,21 @@ InputGroup:Button({
                         remainingTimeStr = "\nKey Expired (or Permanent)"
                     end
                 elseif data.expires_in then
-                     -- Support for seconds duration
-                     local diff = tonumber(data.expires_in)
-                     local h = math.floor(diff / 3600)
-                     local m = math.floor((diff % 3600) / 60)
-                     remainingTimeStr = "\nExpires in: " .. h .. "h " .. m .. "m"
+                      local diff = tonumber(data.expires_in)
+                      local h = math.floor(diff / 3600)
+                      local m = math.floor((diff % 3600) / 60)
+                      remainingTimeStr = "\nExpires in: " .. h .. "h " .. m .. "m"
                 end
                 
                 ANUI:Notify({Title = "Access Granted", Content = "Welcome, " .. tostring(data.username or "User") .. remainingTimeStr, Icon = "check", Duration = 5})
                 
-                -- >> UNLOCK FEATURES <<
-                -- >> UNLOCK FEATURES <<
-                LoadGameTabs()
+                -- >> UNLOCK PREMIUM FEATURES <<
+                LoadPremiumTabs()
                 
             else
-                -- [INVALID OR EXPIRED KEY]
                 ANUI:Notify({Title = "Access Denied", Content = data.message or "Invalid Key", Icon = "x", Duration = 3})
             end
         else
-            -- [API ERROR]
             warn("API Error:", result)
             ANUI:Notify({Title = "Connection Error", Content = "Failed to reach server.", Icon = "wifi-off", Duration = 3})
         end
@@ -527,42 +494,10 @@ AboutSection:Button({
     Callback = function()
         local url = "https://discord.gg/nebublox"
         setclipboard(url)
-        -- Attempt to open URL if executor supports it
         pcall(function() 
             if request then request({Url = "http://127.0.0.1:6463/rpc?v=1", Method = "POST", Headers = {["Content-Type"] = "application/json", ["Origin"] = "https://discord.com"}, Body = game:GetService("HttpService"):JSONEncode({cmd = "INVITE_BROWSER", args = {code = "nebublox"}, nonce = game:GetService("HttpService"):GenerateGUID(false)})}) end
         end)
         ANUI:Notify({Title = "Discord", Content = "Invite copied! Paste in browser if not opened.", Icon = "copy", Duration = 5})
-    end
-})
-
--- [MAP CONFIGURATION]
-local MapDisplayToInternal = {
-    ["Z World"] = "Dbz",
-    ["Cursed World"] = "Jjk",
-    ["Shinobi World"] = "Naruto",
-    ["Pirate World"] = "OnePiece",
-    ["Slayer World"] = "DemonSlayer"
-}
-local MapInternalToDisplay = {}
-for k, v in pairs(MapDisplayToInternal) do MapInternalToDisplay[v] = k end
-local MapOptions = {"Cursed World", "Pirate World", "Shinobi World", "Slayer World", "Z World"} 
-local function RefreshMapOptions() end
-
--- [TAB 2: FARM (SMART FARM)]
-LoadGameTabs = function()
-    if getgenv().GameTabsLoaded then return end
-    getgenv().GameTabsLoaded = true
-    
-    local TeleportTab = Window:Tab({ Title = "Farm", Icon = "map-pin" })
-local FarmSection = TeleportTab:Section({ Title = "Smart Farm", Icon = "zap", Opened = true })
-
-FarmSection:Toggle({
-    Title = "Auto Farm",
-    Desc = "Auto targets & attacks enemies",
-    Value = false,
-    Callback = function(state) 
-        Flags.SmartFarm = state 
-        if not state then getgenv().NebuBlox_CurrentTarget = nil end
     end
 })
 
@@ -574,9 +509,6 @@ local function CreateEmbeddedSelector(parent)
     MainFrame.BackgroundColor3 = Color3.new(0, 0, 0) -- Pitch Black
     MainFrame.BorderSizePixel = 0
     MainFrame.Parent = parent
-    
-    -- [GRADIENT REMOVED]
-    -- local g = Instance.new("UIGradient") ...
     
     local UICorner = Instance.new("UICorner"); UICorner.CornerRadius = UDim.new(0, 8); UICorner.Parent = MainFrame
     
@@ -697,6 +629,24 @@ local function CreateEmbeddedSelector(parent)
     return MainFrame
 end
 
+-- ===========================================
+-- // FREE TABS (LOAD IMMEDIATELY) //
+-- ===========================================
+
+-- [TAB: FARM]
+local TeleportTab = Window:Tab({ Title = "Farm", Icon = "map-pin" })
+local FarmSection = TeleportTab:Section({ Title = "Smart Farm", Icon = "zap", Opened = true })
+
+FarmSection:Toggle({
+    Title = "Auto Farm",
+    Desc = "Auto targets & attacks enemies",
+    Value = false,
+    Callback = function(state) 
+        Flags.SmartFarm = state 
+        if not state then getgenv().NebuBlox_CurrentTarget = nil end
+    end
+})
+
 local TargetSection = TeleportTab:Section({ Title = "Target List", Icon = "list", Opened = true })
 local Placeholder = TargetSection:Paragraph({ Title = "Loading UI...", Content = "" })
 task.spawn(function()
@@ -718,126 +668,7 @@ task.spawn(function()
     if not FindAndInject(game:GetService("CoreGui")) then FindAndInject(player.PlayerGui) end
 end)
 
-
-
--- [TAB 3: TRIAL (TIME TRIAL)]
-TrialTab = Window:Tab({ Title = "Trial 👑", Icon = "clock", Locked = true })
-
--- Easy Trial Section (Moved)
-local TrialSection = TrialTab:Section({ Title = "Easy Time Trial", Icon = "play", Opened = true })
-TrialSection:Toggle({ Title = "Auto Join Trial (Smart)", Value = false, Callback = function(s) 
-    Flags.AutoTrial = s; 
-    Flags.AutoTrialFarm = s
-    if s and (not SavedCFrame or SavedCFrame == nil) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        SavedCFrame = player.Character.HumanoidRootPart.CFrame
-        ANUI:Notify({Title = "Position Saved", Content = "Auto-saved current spot for return.", Icon = "pin", Duration = 3})
-    end
-end })
--- Return Toggle Renamed for Clarity
-TrialSection:Toggle({ Title = "Return After (Trial/Invasion)", Value = false, Callback = function(s) PerformReturn = s end })
-
-local MapDropdown = TrialSection:Dropdown({
-    Title = "Select Return Map",
-    Options = MapOptions,
-    Default = "Z World", -- Default to Z World (Dbz)
-    Callback = function(v) SelectedReturnMap = v end
-})
-
-TrialSection:Button({
-    Title = "Refresh Map List",
-    Callback = function()
-        RefreshMapOptions()
-        if MapDropdown and MapDropdown.Refresh then
-            MapDropdown:Refresh(MapOptions) -- Attempt to refresh if supported
-        else
-            ANUI:Notify({Title = "Maps", Content = "Refreshed internally. Re-open UI to see changes if blocked.", Icon = "refresh", Duration = 3})
-        end
-    end
-})
-
-TrialSection:Button({
-    Title = "Save Current Position (For Selected Map)",
-    Callback = function()
-        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            -- We assume user is IN the map they want to save for?
-            -- Or we detect map?
-            -- Simple logic: Provide override.
-            -- If user saves position, we store it.
-            -- When returning, if Selected Map matches the map associated with this position?
-            -- We don't track map association strictly.
-            -- But user said "user should choose the map they saved their position in".
-            -- I'll define SavedCFrame as GLOBAL value.
-            SavedCFrame = root.CFrame
-            -- We also try to guess the map name to be smart
-            local currentMap = "Unknown"
-            local maps = Workspace:FindFirstChild("Maps")
-            if maps then
-                local bestDist = 999999
-                for _, m in ipairs(maps:GetChildren()) do
-                    local spawn = m:FindFirstChild("Spawn") or m:FindFirstChild("SpawnPoint")
-                    if spawn then
-                        local dist = (root.Position - spawn.Position).Magnitude
-                        if dist < bestDist then bestDist = dist; currentMap = m.Name end
-                    end
-                end
-            end
-            -- Store map
-            getgenv().SavedMapInternalName = currentMap
-            
-            local disp = MapInternalToDisplay[currentMap] or currentMap
-            ANUI:Notify({Title = "Position Saved", Content = "Saved for: " .. disp, Icon = "check", Duration = 3})
-        else
-            ANUI:Notify({Title = "Error", Content = "Character not found!", Icon = "alert-triangle", Duration = 3})
-        end
-    end
-})
-
-TrialSection:Toggle({ Title = "Auto Drop Potion (On Start)", Value = false, Callback = function(s) Flags.AutoDropPotion = s end })
-TrialSection:Toggle({ Title = "Attack ALL (Trial Only)", Value = false, Callback = function(s) Flags.TrialAttackAll = s end })
-
--- Trial Upgrades Section (New)
-
-
-
-
--- [TAB 4: GAMEMODES (SWAPPED LOGIC)]
-GamemodesTab = Window:Tab({ Title = "Gamemodes 👑", Icon = "swords", Locked = true })
-
-local BossSection = GamemodesTab:Section({ Title = "World Boss Rushes", Icon = "skull", Opened = true })
-BossSection:Toggle({ Title = "Auto World Boss Rush ( Z World)", Value = false, Callback = function(s) Flags.BossRushDBZ = s end })
-BossSection:Toggle({ Title = "Auto World Boss Rush ( Cursed World)", Value = false, Callback = function(s) Flags.BossRushJJK = s end })
-
-local InvSection = GamemodesTab:Section({ Title = "Invasion", Icon = "shield", Opened = true })
-InvSection:Toggle({ Title = "Auto Invasion (Slayer World)", Value = false, Callback = function(s) Flags.AutoInvasionStart = s end })
-
-
--- [TAB 4: GACHA]
--- [TAB 4: GACHA]
-GachaTab = Window:Tab({ Title = "Gacha 👑", Icon = "gift", Locked = true })
-local OPSection = GachaTab:Section({ Title = "One Piece", Icon = "anchor" })
-OPSection:Toggle({ Title = "Auto Roll Fruit", Value = false, Callback = function(s) Flags.OnePieceFruit = s end })
-OPSection:Toggle({ Title = "Auto Roll Crew", Value = false, Callback = function(s) Flags.OnePieceCrew = s end })
-OPSection:Toggle({ Title = "Auto Haki (Progression)", Value = false, Callback = function(s) Flags.HakiProgression = s end })
-
-local DBZSection = GachaTab:Section({ Title = "Dragon Ball", Icon = "zap" })
-DBZSection:Toggle({ Title = "Auto Roll Saiyan", Value = false, Callback = function(s) Flags.DbzSaiyan = s end })
-DBZSection:Toggle({ Title = "Auto Ki Progression", Value = false, Callback = function(s) Flags.KiProgression = s end })
-
-local NarutoSection = GachaTab:Section({ Title = "Naruto", Icon = "eye" })
-NarutoSection:Toggle({ Title = "Auto Roll Kekkei Genkai", Value = false, Callback = function(s) Flags.NarutoKekkeiGenkai = s end })
-NarutoSection:Toggle({ Title = "Auto Roll Clan", Value = false, Callback = function(s) Flags.NarutoClan = s end })
-NarutoSection:Toggle({ Title = "Auto Roll Tailed Beast", Value = false, Callback = function(s) Flags.NarutoTailedBeast = s end })
-
-local JJKSection = GachaTab:Section({ Title = "Jiu-Jitsu Kaisen", Icon = "flame" })
-JJKSection:Toggle({ Title = "Auto Roll Domain", Value = false, Callback = function(s) Flags.JjkDomain = s end })
-JJKSection:Toggle({ Title = "Auto Cursed Energy", Value = false, Callback = function(s) Flags.CursedProgression = s end })
-
-local SlayerSection = GachaTab:Section({ Title = "Demon Slayer", Icon = "sword" })
-SlayerSection:Toggle({ Title = "Auto Roll Breathing", Value = false, Callback = function(s) Flags.SlayerBreathing = s end })
-SlayerSection:Toggle({ Title = "Auto Roll Art", Value = false, Callback = function(s) Flags.SlayerArt = s end })
-
--- [TAB 5: PROGRESSION]
+-- [TAB: PROGRESSION]
 local MiscTab = Window:Tab({ Title = "Progression", Icon = "chevrons-up" })
 local MiscSection = MiscTab:Section({ Title = "Progression", Icon = "chevrons-up", Opened = true })
 MiscSection:Toggle({ Title = "Auto Rebirth", Value = false, Callback = function(s) Flags.AutoRebirth = s end })
@@ -850,51 +681,33 @@ UpgradeSection:Toggle({ Title = "Auto Upgrade Drops", Value = false, Callback = 
 UpgradeSection:Toggle({ Title = "Auto Upgrade Luck", Value = false, Callback = function(s) Flags.TrialUpgradeLuck = s end })
 UpgradeSection:Toggle({ Title = "Auto Upgrade Walkspeed", Value = false, Callback = function(s) Flags.TrialUpgradeWalkspeed = s end })
 
--- [TAB 6: SETTINGS]
+-- [TAB: SETTINGS]
 local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
 local SystemSection = SettingsTab:Section({ Title = "System", Icon = "power", Opened = true })
 SystemSection:Button({
     Title = "Kill Script (Unload)",
     Callback = function()
-        -- Break all loops
         getgenv().NebuBlox_SessionID = 0 
         getgenv().NebuBlox_Running = false
-        
-        -- Cleanup UI
-        if getgenv().ANUI_Window then 
-             pcall(function() getgenv().ANUI_Window:Destroy() end)
-        end
-        if Window then
-             pcall(function() Window:Destroy() end)
-        end
-        
-        -- Notify (if possible before destruction)
+        if getgenv().ANUI_Window then pcall(function() getgenv().ANUI_Window:Destroy() end) end
+        if Window then pcall(function() Window:Destroy() end) end
         pcall(function() 
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "Nebublox",
-                Text = "Script Unloaded / Killed.",
-                Duration = 3
-            })
+            game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Nebublox", Text = "Script Unloaded / Killed.", Duration = 3})
         end)
     end
 })
 
 local ConfigSection = SettingsTab:Section({ Title = "Configuration Manager", Icon = "folder", Opened = true })
-
 ConfigSection:Input({ Title = "Config Name", Placeholder = "Enter config name...", Callback = function(text) ConfigNameInput = text end })
 
--- [CONFIG DROPDOWN SYSTEM]
 local ConfigDropdown
 local SelectedConfig = ""
 
 local function UpdateConfigDropdown()
     local list = ConfigSystem.GetConfigs()
     if #list == 0 then list = {"None"} end
-    -- Attempt to refresh dropdown if library supports it
-    if ConfigDropdown and ConfigDropdown.Refresh then
-        ConfigDropdown:Refresh(list, true) 
-    end
+    if ConfigDropdown and ConfigDropdown.Refresh then ConfigDropdown:Refresh(list, true) end
 end
 
 ConfigDropdown = ConfigSection:Dropdown({
@@ -904,7 +717,7 @@ ConfigDropdown = ConfigSection:Dropdown({
     Callback = function(val)
         if val ~= "None" then
             SelectedConfig = val
-            ConfigNameInput = val -- Optional: Set name input to match selected
+            ConfigNameInput = val
             ANUI:Notify({Title = "Selected", Content = val, Icon = "check", Duration = 2})
         end
     end
@@ -967,16 +780,121 @@ ConfigSection:Button({
     end
 })
 
-
 local PerfSection = SettingsTab:Section({ Title = "System Performance", Icon = "cpu", Opened = true })
 PerfSection:Toggle({ Title = "Anti-AFK / Anti-Kick", Value = getgenv().NebubloxSettings.AntiAfkEnabled, Callback = function(s) getgenv().NebubloxSettings.AntiAfkEnabled = s; ToggleAntiAFK(s) end })
 PerfSection:Button({ Title = "⚡ Low GFX Mode (FPS Boost)", Callback = function() BoostFPS() end })
 
-ConfigSystem.CheckAutoload()
-end -- End of LoadGameTabs
+
+-- ===========================================
+-- // PREMIUM TABS (LOCKED UNTIL VERIFY) //
+-- ===========================================
+LoadPremiumTabs = function()
+    if getgenv().GameTabsLoaded then return end
+    getgenv().GameTabsLoaded = true
+    
+    ANUI:Notify({Title = "Premium Unlocked", Content = "Loading Premium Features...", Icon = "unlock", Duration = 3})
+    
+    -- [TAB: TRIAL (TIME TRIAL)]
+    local TrialTab = Window:Tab({ Title = "Trial 👑", Icon = "clock" })
+    local TrialSection = TrialTab:Section({ Title = "Easy Time Trial", Icon = "play", Opened = true })
+    
+    TrialSection:Toggle({ Title = "Auto Join Trial (Smart)", Value = false, Callback = function(s) 
+        Flags.AutoTrial = s; 
+        Flags.AutoTrialFarm = s
+        if s and (not SavedCFrame or SavedCFrame == nil) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            SavedCFrame = player.Character.HumanoidRootPart.CFrame
+            ANUI:Notify({Title = "Position Saved", Content = "Auto-saved current spot for return.", Icon = "pin", Duration = 3})
+        end
+    end })
+    
+    TrialSection:Toggle({ Title = "Return After (Trial/Invasion)", Value = false, Callback = function(s) PerformReturn = s end })
+    
+    local MapDropdown = TrialSection:Dropdown({
+        Title = "Select Return Map",
+        Options = MapOptions,
+        Default = "Z World",
+        Callback = function(v) SelectedReturnMap = v end
+    })
+    
+    TrialSection:Button({
+        Title = "Refresh Map List",
+        Callback = function()
+            RefreshMapOptions()
+            if MapDropdown and MapDropdown.Refresh then
+                MapDropdown:Refresh(MapOptions)
+            else
+                ANUI:Notify({Title = "Maps", Content = "Refreshed internally. Re-open UI to see changes if blocked.", Icon = "refresh", Duration = 3})
+            end
+        end
+    })
+    
+    TrialSection:Button({
+        Title = "Save Current Position (For Selected Map)",
+        Callback = function()
+            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                SavedCFrame = root.CFrame
+                local currentMap = "Unknown"
+                local maps = Workspace:FindFirstChild("Maps")
+                if maps then
+                    local bestDist = 999999
+                    for _, m in ipairs(maps:GetChildren()) do
+                        local spawn = m:FindFirstChild("Spawn") or m:FindFirstChild("SpawnPoint")
+                        if spawn then
+                            local dist = (root.Position - spawn.Position).Magnitude
+                            if dist < bestDist then bestDist = dist; currentMap = m.Name end
+                        end
+                    end
+                end
+                getgenv().SavedMapInternalName = currentMap
+                local disp = MapInternalToDisplay[currentMap] or currentMap
+                ANUI:Notify({Title = "Position Saved", Content = "Saved for: " .. disp, Icon = "check", Duration = 3})
+            else
+                ANUI:Notify({Title = "Error", Content = "Character not found!", Icon = "alert-triangle", Duration = 3})
+            end
+        end
+    })
+    
+    TrialSection:Toggle({ Title = "Auto Drop Potion (On Start)", Value = false, Callback = function(s) Flags.AutoDropPotion = s end })
+    TrialSection:Toggle({ Title = "Attack ALL (Trial Only)", Value = false, Callback = function(s) Flags.TrialAttackAll = s end })
+
+    -- [TAB: GAMEMODES]
+    local GamemodesTab = Window:Tab({ Title = "Gamemodes 👑", Icon = "swords" })
+    local BossSection = GamemodesTab:Section({ Title = "World Boss Rushes", Icon = "skull", Opened = true })
+    BossSection:Toggle({ Title = "Auto World Boss Rush ( Z World)", Value = false, Callback = function(s) Flags.BossRushDBZ = s end })
+    BossSection:Toggle({ Title = "Auto World Boss Rush ( Cursed World)", Value = false, Callback = function(s) Flags.BossRushJJK = s end })
+    
+    local InvSection = GamemodesTab:Section({ Title = "Invasion", Icon = "shield", Opened = true })
+    InvSection:Toggle({ Title = "Auto Invasion (Slayer World)", Value = false, Callback = function(s) Flags.AutoInvasionStart = s end })
+
+    -- [TAB: GACHA]
+    local GachaTab = Window:Tab({ Title = "Gacha 👑", Icon = "gift" })
+    local OPSection = GachaTab:Section({ Title = "One Piece", Icon = "anchor" })
+    OPSection:Toggle({ Title = "Auto Roll Fruit", Value = false, Callback = function(s) Flags.OnePieceFruit = s end })
+    OPSection:Toggle({ Title = "Auto Roll Crew", Value = false, Callback = function(s) Flags.OnePieceCrew = s end })
+    OPSection:Toggle({ Title = "Auto Haki (Progression)", Value = false, Callback = function(s) Flags.HakiProgression = s end })
+    
+    local DBZSection = GachaTab:Section({ Title = "Dragon Ball", Icon = "zap" })
+    DBZSection:Toggle({ Title = "Auto Roll Saiyan", Value = false, Callback = function(s) Flags.DbzSaiyan = s end })
+    DBZSection:Toggle({ Title = "Auto Ki Progression", Value = false, Callback = function(s) Flags.KiProgression = s end })
+    
+    local NarutoSection = GachaTab:Section({ Title = "Naruto", Icon = "eye" })
+    NarutoSection:Toggle({ Title = "Auto Roll Kekkei Genkai", Value = false, Callback = function(s) Flags.NarutoKekkeiGenkai = s end })
+    NarutoSection:Toggle({ Title = "Auto Roll Clan", Value = false, Callback = function(s) Flags.NarutoClan = s end })
+    NarutoSection:Toggle({ Title = "Auto Roll Tailed Beast", Value = false, Callback = function(s) Flags.NarutoTailedBeast = s end })
+    
+    local JJKSection = GachaTab:Section({ Title = "Jiu-Jitsu Kaisen", Icon = "flame" })
+    JJKSection:Toggle({ Title = "Auto Roll Domain", Value = false, Callback = function(s) Flags.JjkDomain = s end })
+    JJKSection:Toggle({ Title = "Auto Cursed Energy", Value = false, Callback = function(s) Flags.CursedProgression = s end })
+    
+    local SlayerSection = GachaTab:Section({ Title = "Demon Slayer", Icon = "sword" })
+    SlayerSection:Toggle({ Title = "Auto Roll Breathing", Value = false, Callback = function(s) Flags.SlayerBreathing = s end })
+    SlayerSection:Toggle({ Title = "Auto Roll Art", Value = false, Callback = function(s) Flags.SlayerArt = s end })
+end
 
 -- Force Load if Dev Mode
-if _G.NebubloxForceUI then LoadGameTabs() end
+if _G.NebubloxForceUI then LoadPremiumTabs() end
+ConfigSystem.CheckAutoload()
 
 -- // 3. LOGIC //
 local Remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
@@ -1218,7 +1136,7 @@ end)
 task.spawn(function()
     while true do
         if getgenv().NebuBlox_SessionID ~= SessionID then break end
-        local dt = task.wait(5) -- [LAG FIX] Slowed down to 5.0
+        local dt = task.wait(10) -- [LAG FIX] Slowed down to 10.0
         if Flags.SmartFarm or Flags.AutoTrialFarm or Flags.BossRushDBZ or Flags.BossRushJJK then
              pcall(function()
                 VirtualUser:CaptureController()
@@ -1247,8 +1165,6 @@ task.spawn(function()
         if getgenv().NebuBlox_SessionID ~= SessionID then break end
         loops = loops + 1
         
-
-
         pcall(function()
             -- Lazy load SpecialProgression to avoid blocking
             local SpecialProgressionRemote = Remotes:FindFirstChild("SpecialProgression")
