@@ -4,16 +4,36 @@
 -- [0] COMPATIBILITY PATCH
 local getgenv = getgenv or function() return _G end
 
--- [1] PREVENT MULTIPLE EXECUTIONS
+-- [1] KILL PREVIOUS INSTANCE (allows re-execution without rejoining)
 if getgenv().NebubloxLoaded then 
     pcall(function()
         game:GetService("StarterGui"):SetCore("SendNotification", {
             Title = "Nebublox",
-            Text = "Hub is already running!",
-            Duration = 3
+            Text = "Reloading...",
+            Duration = 2
         })
     end)
-    return 
+    -- Kill old session
+    getgenv().NebuBlox_Running = false
+    getgenv().NebuBlox_SessionID = 0
+    task.wait(0.3)
+    -- Destroy old UI
+    pcall(function()
+        local core = game:GetService("CoreGui")
+        for _, name in ipairs({"Nebublox", "ANUI", "NebubloxAuth", "NebuEnemyList"}) do
+            local gui = core:FindFirstChild(name)
+            if gui then gui:Destroy() end
+        end
+        local pgui = game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
+        if pgui then
+            for _, name in ipairs({"Nebublox", "ANUI"}) do
+                local gui = pgui:FindFirstChild(name)
+                if gui then gui:Destroy() end
+            end
+        end
+    end)
+    getgenv().NebubloxLoaded = nil
+    getgenv().ANUI_Window = nil
 end
 
 -- [2] SERVICES & VARS
