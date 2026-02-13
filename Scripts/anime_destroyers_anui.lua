@@ -27,7 +27,7 @@ local function LoadScript(url)
     return result
 end
 
-local ANUI = loadstring(LoadScript("https://raw.githubusercontent.com/ANHub-Script/ANUI/refs/heads/main/dist/main.lua"))()
+local ANUI = loadstring(LoadScript("https://raw.githubusercontent.com/LilNugOfWisdom/NebubloxUI/main/Scripts/anui_patched.lua"))()
 
 -- 2. Configuration Flags
 local Flags = {
