@@ -336,8 +336,66 @@ task.spawn(function()
     end
 end)
 
--- [TAB 1: ABOUT]
-local TrialTab, GamemodesTab, GachaTab -- Forward declare for Key System
+-- [TAB 1: ABOUT] (Forward declare)
+local TrialTab, GamemodesTab, GachaTab 
+
+-- [THEME: DARK BLUE / PINK GRADIENT]
+task.spawn(function()
+    repeat task.wait(0.5) until Window and Window.UIElements and Window.UIElements.Main
+    
+    local function ApplyToFrame(frame)
+        if not frame then return end
+        
+        -- Remove conflicting theme gradients from library
+        local old = frame:FindFirstChild("WindUIGradient")
+        if old then old:Destroy() end
+        
+        local g = frame:FindFirstChild("NebuGradient")
+        if not g then
+            g = Instance.new("UIGradient")
+            g.Name = "NebuGradient"
+            g.Parent = frame
+        end
+        
+        g.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 139)), -- Dark Blue
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 20, 147)) -- Deep Pink
+        })
+        g.Rotation = 45
+        
+        -- FORCE BACKGROUND TO WHITE FOR GRADIENT TO SHOW
+        frame.BackgroundColor3 = Color3.new(1, 1, 1)
+        frame.BackgroundTransparency = 0 
+
+        -- [TEXT COLOR INJECTION]
+        -- Attempt to find all text elements and force them to white/contrast
+        task.spawn(function()
+            while task.wait(1) do
+                if getgenv().NebuBlox_SessionID ~= SessionID then break end
+                for _, v in ipairs(frame:GetDescendants()) do
+                    if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then
+                         -- Keep user's preferred text colors if they set them, or default to white for visibility on dark gradient
+                         if v.TextColor3 == Color3.new(0,0,0) then
+                             v.TextColor3 = Color3.new(1,1,1)
+                         end
+                    elseif v:IsA("ImageLabel") or v:IsA("ImageButton") then
+                        -- Darken icons? No, lighten them for dark bg
+                        if v.ImageColor3 == Color3.new(0,0,0) then
+                             v.ImageColor3 = Color3.new(1,1,1)
+                        end
+                    end
+                end
+            end
+        end)
+    end
+    
+    -- Apply to the Main Container
+    ApplyToFrame(Window.UIElements.Main)
+    
+    if Window.UIElements.Main:FindFirstChild("Main") then
+        ApplyToFrame(Window.UIElements.Main.Main)
+    end
+end)
 local MainTab = Window:Tab({ Title = "About", Icon = "info" })
 local BannerSection = MainTab:Section({ Title = "", Icon = "", Opened = true })
 BannerSection:Paragraph({ Title = "Loading Banner...", Content = "" })
@@ -477,9 +535,18 @@ local function CreateEmbeddedSelector(parent)
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "EnemySelectorFrame"
     MainFrame.Size = UDim2.new(1, -10, 0, 250)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    MainFrame.BackgroundColor3 = Color3.new(1, 1, 1) -- White for gradient
     MainFrame.BorderSizePixel = 0
     MainFrame.Parent = parent
+    
+    -- [GRADIENT]
+    local g = Instance.new("UIGradient")
+    g.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 139)), -- Dark Blue
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 20, 147)) -- Deep Pink
+    })
+    g.Rotation = 45
+    g.Parent = MainFrame
     
     local UICorner = Instance.new("UICorner"); UICorner.CornerRadius = UDim.new(0, 8); UICorner.Parent = MainFrame
     
