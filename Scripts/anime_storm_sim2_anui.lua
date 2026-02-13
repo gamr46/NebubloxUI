@@ -502,10 +502,16 @@ InputGroup:Button({
 })
 
 AboutSection:Button({
-    Title = "- Get Premium Key / Discord",
+    Title = "Get Premium Key / Discord",
+    Icon = "message-square", 
     Callback = function()
-        setclipboard("https://discord.gg/nebublox")
-        ANUI:Notify({Title = "Discord", Content = "Invite copied to clipboard!", Icon = "copy", Duration = 3})
+        local url = "https://discord.gg/nebublox"
+        setclipboard(url)
+        -- Attempt to open URL if executor supports it
+        pcall(function() 
+            if request then request({Url = "http://127.0.0.1:6463/rpc?v=1", Method = "POST", Headers = {["Content-Type"] = "application/json", ["Origin"] = "https://discord.com"}, Body = game:GetService("HttpService"):JSONEncode({cmd = "INVITE_BROWSER", args = {code = "nebublox"}, nonce = game:GetService("HttpService"):GenerateGUID(false)})}) end
+        end)
+        ANUI:Notify({Title = "Discord", Content = "Invite copied! Paste in browser if not opened.", Icon = "copy", Duration = 5})
     end
 })
 
@@ -1190,7 +1196,7 @@ end)
 task.spawn(function()
     while true do
         if getgenv().NebuBlox_SessionID ~= SessionID then break end
-        local dt = task.wait(0.1)
+        local dt = task.wait(0.35) -- [LAG FIX] Slowed down from 0.1 to 0.35
         if Flags.SmartFarm or Flags.AutoTrialFarm or Flags.BossRushDBZ or Flags.BossRushJJK then
              pcall(function()
                 VirtualUser:CaptureController()
