@@ -427,9 +427,28 @@ InputGroup:Button({
                 ANUI:Notify({Title = "Access Granted", Content = "Welcome, " .. tostring(data.username or "User"), Icon = "check", Duration = 5})
                 
                 -- >> UNLOCK FEATURES <<
-                if TrialTab then TrialTab:Unlock() end
-                if GamemodesTab then GamemodesTab:Unlock() end
-                if GachaTab then GachaTab:Unlock() end
+                -- >> UNLOCK FEATURES <<
+                print("[Nebublox Debug] Unlocking Tabs...")
+                print("TrialTab:", TrialTab)
+                
+                local function SafeUnlock(tab, name)
+                    if tab then
+                        if tab.Unlock then
+                            local s, e = pcall(function() tab:Unlock() end)
+                            if s then print("Unlocked:", name) else warn("Unlock Error:", name, e) end
+                        else
+                            warn("Unlock method missing on:", name)
+                            -- Try fallback
+                            tab.Locked = false
+                        end
+                    else
+                        warn("Tab is nil:", name)
+                    end
+                end
+
+                SafeUnlock(TrialTab, "TrialTab")
+                SafeUnlock(GamemodesTab, "GamemodesTab")
+                SafeUnlock(GachaTab, "GachaTab")
                 
             else
                 -- [INVALID OR EXPIRED KEY]
