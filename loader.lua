@@ -1,6 +1,11 @@
 -- // UNIVERSAL HUB LOADER //
 -- // Optimized by Gemini & Antigravity //
 
+local SCRIPT_VERSION = "1.0.6"
+print("-----------------------------------------")
+print("[Nebublox] KEY SYSTEM v" .. SCRIPT_VERSION .. " (Freemium)")
+print("-----------------------------------------")
+
 -- [1] PREVENT MULTIPLE EXECUTIONS
 if getgenv().UniversalHubLoaded then 
     pcall(function()
@@ -21,16 +26,22 @@ local LocalPlayer = Players.LocalPlayer
 local PlaceId = game.PlaceId
 local UniverseId = game.GameId
 
+-- Initialize globals
+if _G.NebubloxTier == nil then _G.NebubloxTier = "Free" end
+if _G.NebubloxKeyValid == nil then _G.NebubloxKeyValid = false end
+
 -- [3] LIBRARY LOADER
 local ANUI_URL = "https://raw.githubusercontent.com/ANHub-Script/ANUI/refs/heads/main/dist/main.lua"
 local success, libraryCode = pcall(function() return game:HttpGet(ANUI_URL) end)
 
 if not success or not libraryCode or libraryCode:find("404: Not Found") or libraryCode:find("<!DOCTYPE html>") then
+    print("[Nebublox] Failed to load UI Library. Check connection.")
     return
 end
 
 local libFunc, libErr = loadstring(libraryCode)
 if not libFunc then
+    print("[Nebublox] UI Library Syntax Error: " .. tostring(libErr))
     return
 end
 
@@ -86,9 +97,10 @@ end
 local GameIds = {
     [98199457453897] = { Name = "[UPD 1] Anime Storm 2", Url = "https://raw.githubusercontent.com/LilNugOfWisdom/NebubloxUI/main/Scripts/anime_storm_sim2_anui.lua" },
     [133898125416947] = { Name = "[Release🔥] Anime Creatures💥", Url = "https://raw.githubusercontent.com/LilNugOfWisdom/NebubloxUI/main/Scripts/Anime_Creatures_Anui.lua" },
+    [136063393518705] = { Name = "[Release] Anime Destroyers", Url = "https://raw.githubusercontent.com/LilNugOfWisdom/NebubloxUI/main/Scripts/anime_destroyers_anui.lua" },
 }
 
--- [6] KEY SYSTEM INTEGRATION (Merged)
+-- [6] KEY SYSTEM INTEGRATION
 local KeySystem = {}
 KeySystem.__index = KeySystem
 
@@ -149,7 +161,9 @@ function KeySystem:Validate(inputKey)
         
         if data.valid then
             self.IsVerified = true
-            self.Tier = data.tier
+            self.Tier = data.tier or "Premium"
+            _G.NebubloxTier = self.Tier
+            _G.NebubloxKeyValid = true
             self:SaveKey(keyToCheck)
             return true, "Success"
         else
@@ -178,7 +192,7 @@ function KeySystem:ShowUI(onSuccess)
     -- 2. Create Login Window
     local Window = ANUI:CreateWindow({
         Title = "Nebublox Auth",
-        Author = "v1.0",
+        Author = "v" .. SCRIPT_VERSION,
         Folder = "NebubloxAuth",
         Icon = "rbxassetid://121698194718505", 
         IconSize = 44,
@@ -239,8 +253,9 @@ function KeySystem:ShowUI(onSuccess)
     })
 end
 
--- [7] MAIN HUB LOGIC (Wrapped)
+-- [7] MAIN HUB LOGIC (Universal Hub)
 local function StartHub()
+    -- AUTO-DETECTION LOGIC
     local DetectedGame = GameIds[PlaceId] or GameIds[UniverseId]
 
     if DetectedGame then
