@@ -39,7 +39,7 @@ local API_URL_BASE = "https://darkmatterv1.onrender.com"
 -- Key Validator Check
 local function ValidateKey(key)
     local success, result = pcall(function()
-        return game:HttpGet(API_URL_BASE .. "/verify_key?key=" .. key)
+        return game:HttpGet(API_URL_BASE .. "/api/verify_key?key=" .. key)
     end)
     if success then
         local data = game:GetService("HttpService"):JSONDecode(result)
