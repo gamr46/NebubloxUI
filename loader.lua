@@ -77,25 +77,25 @@ local GameIds = {
     -- Anime Storm 2
     [98199457453897] = { 
         Name = "Anime Storm 2", 
-        Url = "https://raw.githubusercontent.com/LilNugOfWisdom/NebubloxUI/main/anime_storm_sim2_anui.lua" 
+        Url = "https://raw.githubusercontent.com/LilNugOfWisdom/NebubloxUI/main/Scripts/anime_storm_sim2_anui.lua" 
     },
     
     -- Anime Destroyers
     [136063393518705] = { 
         Name = "Anime Destroyers", 
-        Url = "https://raw.githubusercontent.com/LilNugOfWisdom/NebubloxUI/main/anime_destroyers_anui.lua" 
+        Url = "https://raw.githubusercontent.com/LilNugOfWisdom/NebubloxUI/main/Scripts/anime_destroyers_anui.lua" 
     },
     
     -- Anime Creatures (Note the Capital Letters in filename)
     [133898125416947] = { 
         Name = "Anime Creatures", 
-        Url = "https://raw.githubusercontent.com/LilNugOfWisdom/NebubloxUI/main/Anime_Creatures_Anui.lua" 
+        Url = "https://raw.githubusercontent.com/LilNugOfWisdom/NebubloxUI/main/Scripts/Anime_Creatures_Anui.lua" 
     },
 
     -- Anime Capture (I kept this one just in case you add it later)
     [15498808459] = { 
         Name = "Anime Capture", 
-        Url = "https://raw.githubusercontent.com/LilNugOfWisdom/NebubloxUI/main/anime_capture_anui.lua" 
+        Url = "https://raw.githubusercontent.com/LilNugOfWisdom/NebubloxUI/main/Scripts/anime_capture_anui.lua" 
     }
 }
 
