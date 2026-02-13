@@ -2,6 +2,8 @@
 print("/// NEBUBLOX v3.1 LOADED - " .. os.date("%X") .. " ///")
 -- // UI Library: ANUI //
 
+local API_URL_BASE = "https://darkmatterv1.onrender.com/api" -- [PATCH] Added API URL Base
+
 -- // 0. SESSION & CLEANUP //
 local SessionID = tick()
 getgenv().NebuBlox_SessionID = SessionID
@@ -51,6 +53,9 @@ local function LoadScript(url)
     -- [DEV] Try Local File First (for testing updates)
     if isfile and isfile("ANUI_source.lua") then return readfile("ANUI_source.lua") end
     if isfile and isfile("ANUI-Library/games/ANUI_source.lua") then return readfile("ANUI-Library/games/ANUI_source.lua") end
+    
+    -- [USER PATCH] Try NEBUBLOX Public Path 
+    if isfile and isfile("Nebublox Public/Scripts/anui_patched.lua") then return readfile("Nebublox Public/Scripts/anui_patched.lua") end
 
     local success, result = pcall(function() return game:HttpGet(url) end)
     if not success then
@@ -69,6 +74,7 @@ local function LoadScript(url)
     return result
 end
 
+-- [PATCH] Use Custom Patched Library
 local ANUI = loadstring(LoadScript("https://raw.githubusercontent.com/LilNugOfWisdom/NebubloxUI/main/Scripts/anui_patched.lua"))()
 
 local Players = game:GetService("Players")
@@ -148,7 +154,6 @@ pcall(function()
     if not isfolder(FolderName) then makefolder(FolderName) end
     if not isfolder(ConfigsFolder) then makefolder(ConfigsFolder) end
 end)
-local API_URL_BASE = "https://darkmatterv1.onrender.com"
 
 local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
@@ -407,16 +412,10 @@ InputGroup:Button({
         ANUI:Notify({Title = "Verifying...", Content = "Checking key...", Icon = "loader", Duration = 2})
 
         -- 3. API Request
-        -- 3. API Request
         local success, result = pcall(function()
-            local HttpService = game:GetService("HttpService")
-            local hwid = (gethwid and gethwid() or game:GetService("RbxAnalyticsService"):GetClientId())
-            local encodedKey = HttpService:UrlEncode(UserKeyInput)
-            
-            local url = API_URL_BASE .. "/api/verify_key?key=" .. encodedKey .. "&hwid=" .. hwid
-            
-            local response = game:HttpGet(url)
-            return HttpService:JSONDecode(response)
+            local url = API_URL_BASE .. "/verify_key?key=" .. UserKeyInput .. "&hwid=" .. game:GetService("RbxAnalyticsService"):GetClientId()
+            local response = game:GetService("HttpService"):GetAsync(url)
+            return game:GetService("HttpService"):JSONDecode(response)
         end)
 
         -- 4. Handle Response
@@ -427,31 +426,9 @@ InputGroup:Button({
                 ANUI:Notify({Title = "Access Granted", Content = "Welcome, " .. tostring(data.username or "User"), Icon = "check", Duration = 5})
                 
                 -- >> UNLOCK FEATURES <<
-                -- >> UNLOCK FEATURES <<
-                print("[Nebublox Debug] Unlocking Tabs...")
-                print("TrialTab:", TrialTab)
-                
-                local function ForceUnlock(tab, name)
-                    if not tab then warn(name, "is nil") return end
-                    print("[Nebublox Debug] Forcing unlock on:", name)
-                    
-                    -- Try Properties
-                    pcall(function() tab.Locked = false end)
-                    pcall(function() tab.Visible = true end)
-                    pcall(function() tab.Enabled = true end)
-                    pcall(function() tab.Selectable = true end)
-                    pcall(function() tab.Active = true end)
-                    
-                    -- Try Methods
-                    if tab.Unlock then pcall(function() tab:Unlock() end) end
-                    if tab.Enable then pcall(function() tab:Enable() end) end
-                    if tab.Show then pcall(function() tab:Show() end) end
-                    if tab.SetLocked then pcall(function() tab:SetLocked(false) end) end
-                end
-
-                ForceUnlock(TrialTab, "TrialTab")
-                ForceUnlock(GamemodesTab, "GamemodesTab")
-                ForceUnlock(GachaTab, "GachaTab")
+                if TrialTab then TrialTab:Unlock() end
+                if GamemodesTab then GamemodesTab:Unlock() end
+                if GachaTab then GachaTab:Unlock() end
                 
             else
                 -- [INVALID OR EXPIRED KEY]
@@ -460,10 +437,7 @@ InputGroup:Button({
         else
             -- [API ERROR]
             warn("API Error:", result)
-            -- Show the actual error if it's short, otherwise generic
-            local errMsg = tostring(result)
-            if #errMsg > 20 then errMsg = "Failed to reach server." end
-            ANUI:Notify({Title = "Connection Error", Content = errMsg, Icon = "wifi-off", Duration = 3})
+            ANUI:Notify({Title = "Connection Error", Content = "Failed to reach server.", Icon = "wifi-off", Duration = 3})
         end
     end
 })
@@ -471,7 +445,7 @@ InputGroup:Button({
 AboutSection:Button({
     Title = "- Get Premium Key / Discord",
     Callback = function()
-        setclipboard("https://discord.gg/T2vw3QuJ9K")
+        setclipboard("https://discord.gg/nebublox")
         ANUI:Notify({Title = "Discord", Content = "Invite copied to clipboard!", Icon = "copy", Duration = 3})
     end
 })
@@ -502,7 +476,6 @@ FarmSection:Toggle({
         if not state then getgenv().NebuBlox_CurrentTarget = nil end
     end
 })
-
 -- [CUSTOM ENEMY SELECTOR UI]
 local function CreateEmbeddedSelector(parent)
     local MainFrame = Instance.new("Frame")
@@ -774,7 +747,7 @@ SlayerSection:Toggle({ Title = "Auto Roll Art", Value = false, Callback = functi
 -- [TAB 5: PROGRESSION]
 local MiscTab = Window:Tab({ Title = "Progression", Icon = "chevrons-up" })
 local MiscSection = MiscTab:Section({ Title = "Progression", Icon = "chevrons-up", Opened = true })
-MiscSection:Toggle({ Title = "Auto Rank up", Value = false, Callback = function(s) Flags.AutoRebirth = s end })
+MiscSection:Toggle({ Title = "Auto Rebirth", Value = false, Callback = function(s) Flags.AutoRebirth = s end })
 MiscSection:Toggle({ Title = "Claim Timed Rewards", Value = false, Callback = function(s) Flags.AutoTimedRewards = s end })
 
 local UpgradeSection = MiscTab:Section({ Title = "Trial Upgrades", Icon = "trending-up" })
