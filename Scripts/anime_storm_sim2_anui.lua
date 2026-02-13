@@ -5,7 +5,7 @@ print("/// NEBUBLOX v3.1 LOADED - " .. os.date("%X") .. " ///")
 local API_URL_BASE = "https://darkmatterv1.onrender.com/api" -- [PATCH] Added API URL Base
 
 -- // 0. SESSION & CLEANUP //
-local SessionID = tick()
+SessionID = tick()
 getgenv().NebuBlox_SessionID = SessionID
 
 local function SafeDisconnect(conn)
@@ -118,7 +118,7 @@ if not getgenv().NebubloxSettings then
 end
 
 -- // 1. CONFIGURATION //
-local Flags = {
+Flags = {
     SmartFarm = false,
     TrialAttackAll = false,
     TargetName = "",
@@ -325,7 +325,7 @@ task.spawn(function()
 end)
 
 -- // 2. UI SETUP //
-local Window = ANUI:CreateWindow({
+Window = ANUI:CreateWindow({
     Title = "Nebublox", 
     Author = "He Who Remains Lil'Nug",
     Folder = "Nebublox",
@@ -418,7 +418,7 @@ task.spawn(function()
 end)
 
 -- [TAB 1: ABOUT]
-local TrialTab, GamemodesTab, GachaTab -- Forward declare for Key System
+TrialTab, GamemodesTab, GachaTab = nil, nil, nil -- Use Globals
 local MainTab = Window:Tab({ Title = "About", Icon = "info" })
 local BannerSection = MainTab:Section({ Title = "", Icon = "", Opened = true })
 BannerSection:Paragraph({ Title = "Loading Banner...", Content = "" })
@@ -455,7 +455,7 @@ local AboutSection = MainTab:Section({ Title = "Authentication", Icon = "shield"
 -- Welcome Message
 -- Community Message
 AboutSection:Paragraph({
-    Title = "Thank You for using Nebublox! ❤️",
+    Title = "Thank You for using Nebublox! â¤ï¸",
     Content = "We appreciate your support! \nThis script features a powerful Auto Farm (Free) and specialized modes for Premium users.\n\nJoin our Discord for keys, updates, and a great community!"
 })
 
@@ -541,17 +541,17 @@ AboutSection:Button({
 })
 
 -- [MAP CONFIGURATION]
-local MapDisplayToInternal = {
+MapDisplayToInternal = {
     ["Z World"] = "Dbz",
     ["Cursed World"] = "Jjk",
     ["Shinobi World"] = "Naruto",
     ["Pirate World"] = "OnePiece",
     ["Slayer World"] = "DemonSlayer"
 }
-local MapInternalToDisplay = {}
+MapInternalToDisplay = {}
 for k, v in pairs(MapDisplayToInternal) do MapInternalToDisplay[v] = k end
-local MapOptions = {"Cursed World", "Pirate World", "Shinobi World", "Slayer World", "Z World"} 
-local function RefreshMapOptions() end
+MapOptions = {"Cursed World", "Pirate World", "Shinobi World", "Slayer World", "Z World"} 
+function RefreshMapOptions() end
 
 -- [TAB 2: FARM (SMART FARM)]
 TeleportTab = Window:Tab({ Title = "Farm", Icon = "map-pin" })
@@ -566,7 +566,7 @@ FarmSection:Toggle({
         if not state then getgenv().NebuBlox_CurrentTarget = nil end
     end
 })
--- [CUSTOM ENEMY SELECTOR UI]
+
 -- [CUSTOM ENEMY SELECTOR UI]
 local function CreateEmbeddedSelector(parent)
     local MainFrame = Instance.new("Frame")
@@ -808,7 +808,7 @@ MiscSection:Toggle({ Title = "Auto Rebirth", Value = false, Callback = function(
 MiscSection:Toggle({ Title = "Claim Timed Rewards", Value = false, Callback = function(s) Flags.AutoTimedRewards = s end })
 
 -- [TAB 3: TRIAL (TIME TRIAL)]
-TrialTab = Window:Tab({ Title = "Trial 👑", Icon = "clock" })
+TrialTab = Window:Tab({ Title = "Trial ðŸ‘‘", Icon = "clock" })
 if TrialTab and TrialTab.Button then TrialTab.Button.Visible = false end -- HIDE BY DEFAULT
 
 -- Easy Trial Section
@@ -851,7 +851,7 @@ TrialSection:Toggle({ Title = "Auto Drop Potion (On Start)", Value = false, Call
 TrialSection:Toggle({ Title = "Attack ALL (Trial Only)", Value = false, Callback = function(s) Flags.TrialAttackAll = s end })
 
 -- [TAB 4: GAMEMODES]
-GamemodesTab = Window:Tab({ Title = "Gamemodes 👑", Icon = "swords" })
+GamemodesTab = Window:Tab({ Title = "Gamemodes ðŸ‘‘", Icon = "swords" })
 if GamemodesTab and GamemodesTab.Button then GamemodesTab.Button.Visible = false end -- HIDE BY DEFAULT
 
 local BossSection = GamemodesTab:Section({ Title = "World Boss Rushes", Icon = "skull", Opened = true })
@@ -871,7 +871,7 @@ InvSection:Toggle({ Title = "Auto Invasion (Slayer World)", Value = false, Callb
 end })
 
 -- [TAB 4: GACHA]
-GachaTab = Window:Tab({ Title = "Gacha 👑", Icon = "gift" })
+GachaTab = Window:Tab({ Title = "Gacha ðŸ‘‘", Icon = "gift" })
 if GachaTab and GachaTab.Button then GachaTab.Button.Visible = false end -- HIDE BY DEFAULT
 
 local OPSection = GachaTab:Section({ Title = "One Piece", Icon = "anchor" })
@@ -1033,7 +1033,7 @@ ConfigSection:Button({
 
 local PerfSection = SettingsTab:Section({ Title = "System Performance", Icon = "cpu", Opened = true })
 PerfSection:Toggle({ Title = "Anti-AFK / Anti-Kick", Value = getgenv().NebubloxSettings.AntiAfkEnabled, Callback = function(s) getgenv().NebubloxSettings.AntiAfkEnabled = s; ToggleAntiAFK(s) end })
-PerfSection:Button({ Title = "⚡ Low GFX Mode (FPS Boost)", Callback = function() BoostFPS() end })
+PerfSection:Button({ Title = "âš¡ Low GFX Mode (FPS Boost)", Callback = function() BoostFPS() end })
 
 ConfigSystem.CheckAutoload()
 
